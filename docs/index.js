@@ -1486,7 +1486,8 @@ function renderSidebar() {
   document.getElementById('sbSeason').textContent = viewModel.seasonYear || '—';
   document.getElementById('sbModeIcon').textContent = viewModel.modeIcon;
   document.getElementById('sbModeLabel').textContent = viewModel.modeLabel;
-  document.getElementById('sbModeStats').textContent = viewModel.modeStats;
+  const _statsEl = document.getElementById('sbModeStats');
+  if (_statsEl) _statsEl.textContent = viewModel.modeStats;
   document.getElementById('sbUserAv').textContent = viewModel.userAv;
   document.getElementById('sbUserName').textContent = viewModel.userName;
   document.getElementById('sbUserRole').textContent = viewModel.userRole;
@@ -1512,13 +1513,13 @@ function renderDashboard() {
   // Hero
   const thisLabel = dateObj ? dateObj.toLocaleDateString('en-AU', { weekday: 'long' }).toUpperCase() : 'THIS ROUND';
   document.getElementById('dashThisLabel').textContent = thisLabel;
+  document.getElementById('dashRoundChip').textContent = `Round ${featRound.round}`;
+  document.getElementById('dashHeroTitle').textContent = fmtDate(featRound.date);
+  document.getElementById('dashHeroMeta').textContent =
+    `vs. ${resolveOpposition(featRound)} · ${resolveLocation(featRound)} · ${fmtTime(featRound.time)} bounce`;
   document.getElementById('dashHeroPill').innerHTML =
     `<span class="status-pill ${featRound.status === 'confirmed' ? 'ok' : 'warn'}">${featRound.status === 'confirmed' ? 'Confirmed' : 'Scheduled'}</span>` +
     (homeAwayLabel(featRound) ? ` ${haTogglePill(featRound)}` : '');
-  document.getElementById('dashHeroTitle').textContent =
-    `Round ${featRound.round} · ${fmtDate(featRound.date)}`;
-  document.getElementById('dashHeroMeta').textContent =
-    `vs. ${resolveOpposition(featRound)} · ${resolveLocation(featRound)} · ${fmtTime(featRound.time)} bounce`;
 
   // Job grid from entries — BYE rounds have no game, no volunteers needed
   const isByeRound = featRound.home_away === 'B';
@@ -2559,7 +2560,7 @@ function setSkin(name) {
 
 function restoreSkin() {
   const saved = localStorage.getItem('roster-skin');
-  if (saved && ['dark', 'forest', 'sunset', 'nautical', 'cobalt', 'night-vision', 'native'].includes(saved)) setSkin(saved);
+  if (saved && ['dark', 'forest', 'sunset', 'nautical', 'cobalt', 'night-vision', 'native', 'chrome', 'sports', 'parallax'].includes(saved)) setSkin(saved);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────

@@ -26,6 +26,10 @@
   <!-- Sidebar -->
   <aside id="sidebar" data-mobile-nav-state="desktop">
     <div class="sb-header">
+      <div class="sb-mode-chip">
+        <span class="sb-mode-icon" id="sbModeIcon">⚙</span>
+        <span class="sb-mode-label" id="sbModeLabel">ADMIN</span>
+      </div>
       <div class="sb-brand">
         <div class="sb-initials" id="sbInitials">—</div>
         <div class="sb-brand-text">
@@ -86,14 +90,6 @@
       </button>
     </nav>
 
-    <div class="sb-mode">
-      <span class="sb-mode-icon" id="sbModeIcon">⚙</span>
-      <div class="sb-mode-text">
-        <div class="sb-mode-label" id="sbModeLabel">ADMIN MODE</div>
-        <div class="sb-mode-stats" id="sbModeStats">—</div>
-      </div>
-    </div>
-
     <div class="sb-user">
       <div class="sb-user-av" id="sbUserAv">—</div>
       <div class="sb-user-info">
@@ -131,11 +127,12 @@
           <div class="dash-hero" id="dashHero">
             <div class="dash-hero-head">
               <span class="dash-hero-label" id="dashThisLabel">THIS ROUND</span>
-              <span id="dashHeroPill"></span>
+              <span class="dash-hero-round" id="dashRoundChip">Round —</span>
             </div>
             <div class="dash-hero-body">
               <div class="dash-hero-title" id="dashHeroTitle">—</div>
               <div class="dash-hero-meta" id="dashHeroMeta">—</div>
+              <div id="dashHeroPill" class="dash-hero-pills"></div>
               <div class="job-grid" id="dashJobGrid"></div>
               <div class="action-bar">
                 <button class="btn" id="btnPrintA4">
@@ -401,6 +398,9 @@
             <button class="skin-btn"        data-skin="cobalt"        title="Cobalt"           onclick="setSkin('cobalt')"></button>
             <button class="skin-btn"        data-skin="night-vision"  title="Night Vision"     onclick="setSkin('night-vision')"></button>
             <button class="skin-btn"        data-skin="native"        title="Native iOS"       onclick="setSkin('native')"></button>
+            <button class="skin-btn"        data-skin="chrome"        title="Chrome"           onclick="setSkin('chrome')"></button>
+            <button class="skin-btn"        data-skin="sports"        title="Sports"           onclick="setSkin('sports')"></button>
+            <button class="skin-btn"        data-skin="parallax"      title="Parallax"         onclick="setSkin('parallax')"></button>
           </div>
         </div>
         <div class="settings-row">
