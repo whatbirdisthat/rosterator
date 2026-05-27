@@ -1,0 +1,45 @@
+@media print {
+  @page { size: A4 portrait; margin: 1.5cm; }
+  body { display: block; }
+  #sidebar, #content > .panel:not(#panel-rounds), .breadcrumb-back,
+  .action-bar, .page-title-row .action-bar,
+  #emailCol, #printBtn, #detailActions,
+  #snapshotToast, .detail-panel-label { display: none !important; }
+  .pp-club-sub .ha-pill { display: none !important; }
+  .pp-initials { display: none !important; }
+  #content { height: auto; overflow: visible; }
+  .detail-outer { display: block; }
+  .detail-layout { grid-template-columns: 1fr; }
+  .print-preview {
+    background: #ffffff;
+    color: #111111;
+    padding: 0;
+    box-shadow: none;
+    border: none;
+  }
+  .print-preview-wrap { border: none; }
+  .pp-header { border-bottom-color: #e0e0e0; }
+  .pp-club-name, .pp-date-big { color: #111; }
+  .pp-club-sub, .pp-date-sub { color: #666; }
+  .pp-initials { background: #5a3fa0; color: #fff; }
+  .pp-job-row { border-bottom-color: #f0f0f0; }
+  .pp-job-name { color: #222; }
+  .pp-job-note { color: #888; }
+  .pp-jumper-big { color: #5a3fa0; }
+  .pp-jumper-big.unfilled { color: #c0392b; }
+  .pp-vol-name { color: #444; }
+  .pp-footer { border-top-color: #e0e0e0; color: #999; }
+}
+
+@media print {
+  .vol-popup, .vol-popup-backdrop { display: none !important; }
+}
+
+@media print {
+  #panel-lineup { display: none !important; }
+}
+
+@media print {
+  #volSwapOverlay, #volSwapBackdrop { display: none !important; }
+  .vol-swap-btn { display: none !important; }
+}

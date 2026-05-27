@@ -1,0 +1,246 @@
+/* iPhone-specific SPA overrides */
+
+@media (max-width: 430px) {
+  body,
+  #app.show {
+    display: block;
+  }
+
+  #sidebar {
+    width: 100%;
+    height: auto;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    overflow: visible;
+  }
+
+  .sb-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+  }
+
+  .sb-brand {
+    padding: 0;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .sb-nav-toggle {
+    display: inline-flex;
+    margin: 0;
+  }
+
+  .sb-privacy,
+  .sb-user {
+    display: none;
+  }
+
+  .sb-nav {
+    display: none;
+    gap: 6px;
+    padding: 0 12px 12px;
+    flex-direction: column;
+    overflow: visible;
+    scrollbar-width: auto;
+  }
+
+  #sidebar[data-mobile-nav-state="open"] .sb-nav {
+    display: flex;
+  }
+
+  .sb-nav-sep {
+    display: none;
+  }
+
+  .sb-nav-item {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 13px;
+    justify-content: flex-start;
+    border-left-width: 0;
+    border-radius: 12px;
+  }
+
+  #content {
+    width: 100%;
+    padding: 14px 14px 28px;
+  }
+
+  .page-title-row,
+  .action-bar,
+  .dash-hero-head,
+  .detail-breadcrumb {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dash-layout,
+  .detail-layout,
+  .rounds-list-grid,
+  .constraints-layout,
+  .settings-layout,
+  .volunteers-layout,
+  .balance-layout,
+  .job-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .glance-pills {
+    gap: 6px;
+  }
+
+  .matrix-wrap,
+  .table-wrap,
+  .vol-table-wrap,
+  .balance-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .settings-select,
+  .settings-input,
+  .vol-search,
+  .edit-form select,
+  .edit-form input[type="time"] {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .print-preview-wrap { display: none; }
+
+  /* F1: hide dashboard headline/buttons on mobile — A4 hero leads */
+  #panel-dashboard .page-title-row { display: none; }
+}
+
+body[data-device-target="iphone"] #sidebar {
+  width: 100%;
+  height: auto;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-right: 0;
+  border-bottom: 1px solid var(--border);
+  overflow: visible;
+}
+
+body[data-device-target="iphone"],
+body[data-device-target="iphone"] #app.show {
+  display: block;
+}
+
+body[data-device-target="iphone"] .sb-privacy,
+body[data-device-target="iphone"] .sb-user {
+  display: none;
+}
+
+body[data-device-target="iphone"] .sb-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+body[data-device-target="iphone"] .sb-brand {
+  padding: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+body[data-device-target="iphone"] .sb-nav-toggle {
+  display: inline-flex;
+  margin: 0;
+}
+
+body[data-device-target="iphone"] .sb-nav {
+  display: none;
+  gap: 6px;
+  padding: 0 12px 12px;
+  flex-direction: column;
+  overflow: visible;
+  scrollbar-width: auto;
+}
+
+body[data-device-target="iphone"] #sidebar[data-mobile-nav-state="open"] .sb-nav {
+  display: flex;
+}
+
+body[data-device-target="iphone"] .sb-nav-sep {
+  display: none;
+}
+
+body[data-device-target="iphone"] .sb-nav-item {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 13px;
+  justify-content: flex-start;
+  border-left-width: 0;
+  border-radius: 12px;
+}
+
+body[data-device-target="iphone"] #content {
+  width: 100%;
+  padding: 14px 14px 28px;
+}
+
+body[data-device-target="iphone"] .dash-layout,
+body[data-device-target="iphone"] .detail-layout,
+body[data-device-target="iphone"] .rounds-list-grid,
+body[data-device-target="iphone"] .constraints-layout,
+body[data-device-target="iphone"] .settings-layout,
+body[data-device-target="iphone"] .volunteers-layout,
+body[data-device-target="iphone"] .balance-layout,
+body[data-device-target="iphone"] .job-grid {
+  grid-template-columns: 1fr;
+}
+
+body[data-device-target="iphone"] .page-title-row,
+body[data-device-target="iphone"] .action-bar,
+body[data-device-target="iphone"] .dash-hero-head,
+body[data-device-target="iphone"] .detail-breadcrumb {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+body[data-device-target="iphone"] button,
+body[data-device-target="iphone"] input,
+body[data-device-target="iphone"] select,
+body[data-device-target="iphone"] textarea {
+  min-height: 44px;
+  font-size: 16px;
+}
+
+body[data-device-target="iphone"] .settings-select,
+body[data-device-target="iphone"] .settings-input,
+body[data-device-target="iphone"] .vol-search,
+body[data-device-target="iphone"] .edit-form select,
+body[data-device-target="iphone"] .edit-form input[type="time"] {
+  min-height: 44px;
+  font-size: 16px;
+}
+
+body[data-device-target="iphone"] .print-preview-wrap {
+  display: none;
+}
+
+/* F1: hide dashboard headline/buttons on iphone target — A4 hero leads */
+body[data-device-target="iphone"] #panel-dashboard .page-title-row { display: none; }
