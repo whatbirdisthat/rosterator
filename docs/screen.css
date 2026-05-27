@@ -160,12 +160,12 @@
 }
 
 [data-skin="native"] {
-  /* iOS dark mode system palette — matches the OS chrome exactly */
-  --bg:         #000000;
-  --bg2:        #1c1c1e;
-  --bg3:        #2c2c2e;
-  --border:     #38383a;
-  --border2:    #48484a;
+  /* iOS dark mode — bg/sidebar lifted to #1c1c1e to match Safari URL bar chrome */
+  --bg:         #1c1c1e;
+  --bg2:        #2c2c2e;
+  --bg3:        #3a3a3c;
+  --border:     #48484a;
+  --border2:    #58585c;
   --text:       #ffffff;
   --text2:      #ababb5;
   --muted:      #636366;
@@ -191,12 +191,12 @@
   --vtag-avoid-bg: rgba(255,69,58,.1);   --vtag-avoid-fg: #ff453a; --vtag-avoid-bd: rgba(255,69,58,.25);
   --cert-bg: rgba(10,132,255,.12); --cert-fg: #0a84ff; --cert-bd: rgba(10,132,255,.25);
   --chip-bg:  rgba(10,132,255,.15); --chip-fg: #0a84ff;
-  --sidebar-bg: #000000;
+  --sidebar-bg: #1c1c1e;
   --sidebar-w:  230px;
   --dot-confirmed: #30d158;
   --dot-scheduled: #64d2ff;
   --hero-bg: #1c1c1e;
-  --hero-border: #38383a;
+  --hero-border: #48484a;
 }
 
 [data-skin="night-vision"] {
