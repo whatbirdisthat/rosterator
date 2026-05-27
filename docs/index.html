@@ -238,6 +238,9 @@
             Rounds
           </button>
           <span class="breadcrumb-label" id="detailBreadcrumb">Round — of —</span>
+          <span class="breadcrumb-spacer"></span>
+          <button class="btn breadcrumb-action" id="btnReallocate">Re-allocate</button>
+          <button class="btn breadcrumb-action" id="btnViewTeamSplits">Splits</button>
         </div>
 
         <div class="detail-outer">
@@ -292,8 +295,6 @@
               Edit values
             </button>
             <button class="btn" id="btnConfirmRound">Confirm Round</button>
-            <button class="btn" id="btnReallocate">Re-allocate</button>
-            <button class="btn" id="btnViewTeamSplits">View Team Splits</button>
           </div>
         </div>
       </div>
@@ -466,6 +467,10 @@
         </div>
       </div>
       <div class="tsp-round-row">
+        <button class="breadcrumb-back" id="btnBackToRound" hidden>
+          <svg style="width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round" viewBox="0 0 12 12"><path d="M8 2L4 6l4 4"/></svg>
+          <span id="btnBackToRoundLabel">Round —</span>
+        </button>
         <label class="tsp-round-label" for="teamSplitsRoundSelect">Round</label>
         <select id="teamSplitsRoundSelect" class="tsp-round-select"></select>
       </div>

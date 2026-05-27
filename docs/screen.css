@@ -1100,8 +1100,11 @@ table.matrix tr.tr-bye:hover td { background: var(--bg2); }
 .rounds-list-view.hidden { display: none; }
 
 .detail-breadcrumb {
-  display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+  display: flex; align-items: center; gap: 8px; margin-bottom: 20px;
+  flex-wrap: wrap;
 }
+.breadcrumb-spacer { flex: 1; min-width: 0; }
+.breadcrumb-action { font-size: 11px; padding: 4px 10px; }
 .breadcrumb-back {
   background: var(--bg3); border: 1px solid var(--border2);
   color: var(--muted); font-family: var(--font-body); font-size: 11px;

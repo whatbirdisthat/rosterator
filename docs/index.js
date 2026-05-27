@@ -2311,6 +2311,14 @@ function renderTeamSplits() {
     : String(featureRound.round);
   select.value = activeRound;
 
+  const backBtn = document.getElementById('btnBackToRound');
+  const backLbl = document.getElementById('btnBackToRoundLabel');
+  if (backBtn && backLbl) {
+    backBtn.hidden = false;
+    backLbl.textContent = `Round ${activeRound}`;
+    backBtn.onclick = () => openRoundDetail(activeRound);
+  }
+
   const players = (data?.reference_data?.players || []);
   if (players.length === 0) {
     content.innerHTML = '<div class="tsp-empty">No player data — run the scheduler first to generate splits.</div>';
