@@ -2164,6 +2164,9 @@ function renderSettings() {
 
   const _pfInput = document.getElementById('printFooterInput');
   if (_pfInput && _pfInput.value !== viewModel.printFooter) _pfInput.value = viewModel.printFooter;
+
+  const _sdEl = document.getElementById('screenDims');
+  if (_sdEl) _sdEl.textContent = `${window.innerWidth} × ${window.innerHeight}px`;
 }
 
 // ── Volunteer summary popup (US-08) ──────────────────────────────────────
@@ -2556,7 +2559,7 @@ function setSkin(name) {
 
 function restoreSkin() {
   const saved = localStorage.getItem('roster-skin');
-  if (saved && ['dark', 'forest', 'sunset', 'nautical'].includes(saved)) setSkin(saved);
+  if (saved && ['dark', 'forest', 'sunset', 'nautical', 'cobalt'].includes(saved)) setSkin(saved);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────

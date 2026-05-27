@@ -159,6 +159,45 @@
   --hero-border: #172840;
 }
 
+[data-skin="cobalt"] {
+  --bg:         #080f1c;
+  --bg2:        #0d1a30;
+  --bg3:        #132440;
+  --border:     #1c3050;
+  --border2:    #264065;
+  --text:       #dce8ff;
+  --text2:      #8ab0d8;
+  --muted:      #4a6e90;
+  --accent:     #4d8fff;
+  --accent2:    #2265d4;
+  --warn:       #ffcc40;
+  --error:      #ff5252;
+  --confirmed:  #40d898;
+  --scheduled:  #70baff;
+  --tag-a:      #5aa5ff;
+  --tag-b:      #a878ff;
+  --tag-shared: #40d0ee;
+  --radius:     6px;
+  --font-head:  'Syne', sans-serif;
+  --font-body:  'DM Mono', monospace;
+  --font-size:  13px;
+  --shadow:     0 2px 16px rgba(0,15,40,.6);
+  --pill-ok-bg:   #082a1e; --pill-ok-fg:   #40d898;
+  --pill-warn-bg: #251a04; --pill-warn-fg: #ffcc40;
+  --pill-err-bg:  #250808; --pill-err-fg:  #ff5252;
+  --stag-a-bg:  rgba(90,165,255,.12); --stag-b-bg: rgba(168,120,255,.12); --stag-s-bg: rgba(64,208,238,.1);
+  --vtag-pref-bg:  rgba(64,216,152,.1);  --vtag-pref-fg:  #40d898; --vtag-pref-bd: rgba(64,216,152,.2);
+  --vtag-avoid-bg: rgba(255,82,82,.1);   --vtag-avoid-fg: #ff5252; --vtag-avoid-bd: rgba(255,82,82,.2);
+  --cert-bg: rgba(77,143,255,.12); --cert-fg: #4d8fff; --cert-bd: rgba(77,143,255,.25);
+  --chip-bg:  rgba(77,143,255,.15); --chip-fg: #4d8fff;
+  --sidebar-bg: #060c18;
+  --sidebar-w:  230px;
+  --dot-confirmed: #40d898;
+  --dot-scheduled: #70baff;
+  --hero-bg: #0d1a30;
+  --hero-border: #1c3050;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    RESET & BASE
    ═══════════════════════════════════════════════════════════════ */
@@ -513,6 +552,7 @@ body {
 .skin-btn[data-skin="forest"]   { background: linear-gradient(135deg,#e8e3d8 50%,#3d6e3a 50%); }
 .skin-btn[data-skin="sunset"]   { background: linear-gradient(135deg,#221830 50%,#ff8c60 50%); }
 .skin-btn[data-skin="nautical"] { background: linear-gradient(135deg,#060d1a 50%,#38c8f0 50%); }
+.skin-btn[data-skin="cobalt"]   { background: linear-gradient(135deg,#080f1c 50%,#4d8fff 50%); }
 
 /* ═══════════════════════════════════════════════════════════════
    DASHBOARD

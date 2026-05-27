@@ -244,3 +244,45 @@ body[data-device-target="iphone"] .print-preview-wrap {
 
 /* F1: hide dashboard headline/buttons on iphone target — A4 hero leads */
 body[data-device-target="iphone"] #panel-dashboard .page-title-row { display: none; }
+
+/* ── Extra-small viewport (≤375px — iPhone SE and smaller) ─────────────── */
+
+@media (max-width: 375px) {
+  #content {
+    padding: 6px 6px 16px;
+    overflow-x: hidden;
+  }
+  .panel {
+    padding: 12px;
+  }
+  .sb-header {
+    padding: 10px 8px;
+  }
+  .sb-nav {
+    padding: 0 8px 10px;
+  }
+  .settings-label {
+    min-width: 80px;
+  }
+}
+
+body[data-device-target="iphone-mini"] #content {
+  padding: 6px 6px 16px;
+  overflow-x: hidden;
+}
+
+body[data-device-target="iphone-mini"] .panel {
+  padding: 12px;
+}
+
+body[data-device-target="iphone-mini"] .sb-header {
+  padding: 10px 8px;
+}
+
+body[data-device-target="iphone-mini"] .sb-nav {
+  padding: 0 8px 10px;
+}
+
+body[data-device-target="iphone-mini"] .settings-label {
+  min-width: 80px;
+}
