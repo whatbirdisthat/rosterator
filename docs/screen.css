@@ -431,6 +431,45 @@
   --hero-border: #242440;
 }
 
+[data-skin="forest-shadows"] {
+  --bg:         #060e06;
+  --bg2:        #0d1a0d;
+  --bg3:        #142414;
+  --border:     #1e3220;
+  --border2:    #2a4430;
+  --text:       #d0e8d0;
+  --text2:      #88a888;
+  --muted:      #507050;
+  --accent:     #4cd87a;
+  --accent2:    #2cb858;
+  --warn:       #d4a840;
+  --error:      #e05858;
+  --confirmed:  #4cd87a;
+  --scheduled:  #6ab0e0;
+  --tag-a:      #6ab0e0;
+  --tag-b:      #c080e0;
+  --tag-shared: #4cd87a;
+  --radius:     6px;
+  --font-head:  'Lora', serif;
+  --font-body:  'DM Mono', monospace;
+  --font-size:  13px;
+  --shadow:     0 4px 20px rgba(0,0,0,.7), 0 1px 4px rgba(0,15,0,.5);
+  --pill-ok-bg:   #082808; --pill-ok-fg:   #4cd87a;
+  --pill-warn-bg: #201800; --pill-warn-fg: #d4a840;
+  --pill-err-bg:  #200808; --pill-err-fg:  #e05858;
+  --stag-a-bg:  rgba(106,176,224,.12); --stag-b-bg: rgba(192,128,224,.12); --stag-s-bg: rgba(76,216,122,.1);
+  --vtag-pref-bg:  rgba(76,216,122,.1);  --vtag-pref-fg:  #4cd87a; --vtag-pref-bd: rgba(76,216,122,.2);
+  --vtag-avoid-bg: rgba(224,88,88,.1);   --vtag-avoid-fg: #e05858; --vtag-avoid-bd: rgba(224,88,88,.2);
+  --cert-bg: rgba(76,216,122,.1); --cert-fg: #4cd87a; --cert-bd: rgba(76,216,122,.2);
+  --chip-bg:  rgba(76,216,122,.12); --chip-fg: #4cd87a;
+  --sidebar-bg: #040a04;
+  --sidebar-w:  230px;
+  --dot-confirmed: #4cd87a;
+  --dot-scheduled: #6ab0e0;
+  --hero-bg: #0d1a0d;
+  --hero-border: #1e3220;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    RESET & BASE
    ═══════════════════════════════════════════════════════════════ */
@@ -798,7 +837,8 @@ body {
 .skin-btn[data-skin="cobalt"]       { background: linear-gradient(135deg,#080f1c 50%,#4d8fff 50%); }
 .skin-btn[data-skin="chrome"]       { background: linear-gradient(135deg,#35363a 50%,#8ab4f8 50%); }
 .skin-btn[data-skin="sports"]       { background: linear-gradient(135deg,#2e1a0a 50%,#e06820 50%); }
-.skin-btn[data-skin="parallax"]     { background: linear-gradient(135deg,#0f0f1e 50%,#9b8fff 50%); }
+.skin-btn[data-skin="parallax"]       { background: linear-gradient(135deg,#0f0f1e 50%,#9b8fff 50%); }
+.skin-btn[data-skin="forest-shadows"] { background: linear-gradient(135deg,#0d1a0d 50%,#4cd87a 50%); }
 
 /* ═══════════════════════════════════════════════════════════════
    DASHBOARD
