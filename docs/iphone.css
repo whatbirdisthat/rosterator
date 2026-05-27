@@ -75,7 +75,6 @@
 
   .page-title-row,
   .action-bar,
-  .dash-hero-head,
   .detail-breadcrumb {
     display: flex;
     flex-direction: column;
@@ -214,7 +213,6 @@ body[data-device-target="iphone"] .job-grid {
 
 body[data-device-target="iphone"] .page-title-row,
 body[data-device-target="iphone"] .action-bar,
-body[data-device-target="iphone"] .dash-hero-head,
 body[data-device-target="iphone"] .detail-breadcrumb {
   display: flex;
   flex-direction: column;
