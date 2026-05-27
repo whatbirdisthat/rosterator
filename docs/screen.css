@@ -824,7 +824,10 @@ body {
 .dash-hero-head {
   padding: 14px 20px 12px;
   border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+}
+.dash-hero-head-left {
+  display: flex; flex-direction: column; gap: 3px;
 }
 .dash-hero-label {
   font-size: 10px; font-weight: 700; letter-spacing: .12em;
@@ -832,7 +835,7 @@ body {
 }
 .dash-hero-title {
   font-family: var(--font-head); font-size: 22px; font-weight: 800;
-  color: var(--text); line-height: 1.15; margin: 0 0 4px;
+  color: var(--text); line-height: 1.15;
 }
 .dash-hero-meta {
   font-size: 12px; color: var(--muted);
@@ -842,6 +845,7 @@ body {
   color: var(--text2);
   font-family: var(--font-head);
   letter-spacing: .04em;
+  align-self: center;
 }
 .dash-hero-pills {
   display: flex; gap: 6px; align-items: center;
