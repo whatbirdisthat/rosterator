@@ -854,6 +854,7 @@ function hideLoading() {
   if (!el) return;
   el.classList.add('hide');
   setTimeout(() => { try { el.remove(); } catch(e) {} }, 500);
+  window.scrollTo(0, 0);
 }
 
 async function initOfflineMode() {
@@ -1013,6 +1014,7 @@ async function initStore() {
       dispatch({ type: 'load-report', payload: { filename: 'from-wizard', report: state } });
       render();
       document.getElementById('app').classList.add('show');
+      window.scrollTo(0, 0);
     });
     return;
   }
