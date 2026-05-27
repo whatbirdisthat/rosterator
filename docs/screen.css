@@ -159,6 +159,46 @@
   --hero-border: #172840;
 }
 
+[data-skin="native"] {
+  /* iOS dark mode system palette — matches the OS chrome exactly */
+  --bg:         #000000;
+  --bg2:        #1c1c1e;
+  --bg3:        #2c2c2e;
+  --border:     #38383a;
+  --border2:    #48484a;
+  --text:       #ffffff;
+  --text2:      #ababb5;
+  --muted:      #636366;
+  --accent:     #0a84ff;
+  --accent2:    #0071e3;
+  --warn:       #ff9f0a;
+  --error:      #ff453a;
+  --confirmed:  #30d158;
+  --scheduled:  #64d2ff;
+  --tag-a:      #0a84ff;
+  --tag-b:      #bf5af2;
+  --tag-shared: #5ac8fa;
+  --radius:     10px;
+  --font-head:  'Plus Jakarta Sans', sans-serif;
+  --font-body:  'Plus Jakarta Sans', sans-serif;
+  --font-size:  13px;
+  --shadow:     0 2px 8px rgba(0,0,0,.6);
+  --pill-ok-bg:   #1a2e1f; --pill-ok-fg:   #30d158;
+  --pill-warn-bg: #2a1e08; --pill-warn-fg: #ff9f0a;
+  --pill-err-bg:  #2a0f0e; --pill-err-fg:  #ff453a;
+  --stag-a-bg:  rgba(10,132,255,.15); --stag-b-bg: rgba(191,90,242,.15); --stag-s-bg: rgba(90,200,250,.12);
+  --vtag-pref-bg:  rgba(48,209,88,.1);   --vtag-pref-fg:  #30d158; --vtag-pref-bd: rgba(48,209,88,.25);
+  --vtag-avoid-bg: rgba(255,69,58,.1);   --vtag-avoid-fg: #ff453a; --vtag-avoid-bd: rgba(255,69,58,.25);
+  --cert-bg: rgba(10,132,255,.12); --cert-fg: #0a84ff; --cert-bd: rgba(10,132,255,.25);
+  --chip-bg:  rgba(10,132,255,.15); --chip-fg: #0a84ff;
+  --sidebar-bg: #000000;
+  --sidebar-w:  230px;
+  --dot-confirmed: #30d158;
+  --dot-scheduled: #64d2ff;
+  --hero-bg: #1c1c1e;
+  --hero-border: #38383a;
+}
+
 [data-skin="night-vision"] {
   --bg:         #000a00;
   --bg2:        #001600;
@@ -591,6 +631,7 @@ body {
 .skin-btn[data-skin="forest"]   { background: linear-gradient(135deg,#e8e3d8 50%,#3d6e3a 50%); }
 .skin-btn[data-skin="sunset"]   { background: linear-gradient(135deg,#221830 50%,#ff8c60 50%); }
 .skin-btn[data-skin="nautical"] { background: linear-gradient(135deg,#060d1a 50%,#38c8f0 50%); }
+.skin-btn[data-skin="native"]       { background: linear-gradient(135deg,#1c1c1e 50%,#0a84ff 50%); }
 .skin-btn[data-skin="night-vision"] { background: linear-gradient(135deg,#000a00 50%,#39ff14 50%); }
 .skin-btn[data-skin="cobalt"]       { background: linear-gradient(135deg,#080f1c 50%,#4d8fff 50%); }
 
