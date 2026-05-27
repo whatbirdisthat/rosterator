@@ -249,7 +249,7 @@ body[data-device-target="iphone"] #panel-dashboard .page-title-row { display: no
 
 @media (max-width: 375px) {
   #content {
-    padding: 6px 6px 16px;
+    padding: 0 6px 16px 0;   /* flush-left; 6px right lets shadows/radius breathe */
     overflow-x: hidden;
   }
   .panel {
@@ -267,7 +267,7 @@ body[data-device-target="iphone"] #panel-dashboard .page-title-row { display: no
 }
 
 body[data-device-target="iphone-mini"] #content {
-  padding: 6px 6px 16px;
+  padding: 0 6px 16px 0;
   overflow-x: hidden;
 }
 
