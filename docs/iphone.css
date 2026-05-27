@@ -15,6 +15,7 @@
     border-right: 0;
     border-bottom: 1px solid var(--border);
     overflow: visible;
+    padding-top: env(safe-area-inset-top, 0px);
   }
 
   .sb-header {
@@ -138,6 +139,7 @@ body[data-device-target="iphone"] #sidebar {
   border-right: 0;
   border-bottom: 1px solid var(--border);
   overflow: visible;
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 body[data-device-target="iphone"],
