@@ -296,14 +296,15 @@
 }
 
 [data-skin="chrome"] {
-  --bg:         #202124;
-  --bg2:        #292a2d;
-  --bg3:        #35363a;
-  --border:     #494c50;
-  --border2:    #5f6368;
+  /* bg matches Chrome iOS dark toolbar (#35363a) for seamless integration */
+  --bg:         #35363a;
+  --bg2:        #404144;
+  --bg3:        #4a4c50;
+  --border:     #5f6368;
+  --border2:    #70747a;
   --text:       #e8eaed;
   --text2:      #bdc1c6;
-  --muted:      #80868b;
+  --muted:      #9aa0a6;
   --accent:     #8ab4f8;
   --accent2:    #669df6;
   --warn:       #fdd663;
@@ -317,39 +318,39 @@
   --font-head:  'Plus Jakarta Sans', sans-serif;
   --font-body:  'Plus Jakarta Sans', sans-serif;
   --font-size:  13px;
-  --shadow:     0 2px 10px rgba(0,0,0,.5);
-  --pill-ok-bg:   #0d2018; --pill-ok-fg:   #81c995;
-  --pill-warn-bg: #2c2008; --pill-warn-fg: #fdd663;
-  --pill-err-bg:  #2c1010; --pill-err-fg:  #f28b82;
-  --stag-a-bg:  rgba(138,180,248,.12); --stag-b-bg: rgba(197,138,249,.12); --stag-s-bg: rgba(120,217,236,.1);
-  --vtag-pref-bg:  rgba(129,201,149,.1);  --vtag-pref-fg:  #81c995; --vtag-pref-bd: rgba(129,201,149,.2);
-  --vtag-avoid-bg: rgba(242,139,130,.1);  --vtag-avoid-fg: #f28b82; --vtag-avoid-bd: rgba(242,139,130,.2);
-  --cert-bg: rgba(138,180,248,.12); --cert-fg: #8ab4f8; --cert-bd: rgba(138,180,248,.25);
-  --chip-bg:  rgba(138,180,248,.15); --chip-fg: #8ab4f8;
-  --sidebar-bg: #202124;
+  --shadow:     0 2px 10px rgba(0,0,0,.4);
+  --pill-ok-bg:   #1a3326; --pill-ok-fg:   #81c995;
+  --pill-warn-bg: #3a3010; --pill-warn-fg: #fdd663;
+  --pill-err-bg:  #3a2020; --pill-err-fg:  #f28b82;
+  --stag-a-bg:  rgba(138,180,248,.15); --stag-b-bg: rgba(197,138,249,.15); --stag-s-bg: rgba(120,217,236,.12);
+  --vtag-pref-bg:  rgba(129,201,149,.12); --vtag-pref-fg:  #81c995; --vtag-pref-bd: rgba(129,201,149,.25);
+  --vtag-avoid-bg: rgba(242,139,130,.12); --vtag-avoid-fg: #f28b82; --vtag-avoid-bd: rgba(242,139,130,.25);
+  --cert-bg: rgba(138,180,248,.15); --cert-fg: #8ab4f8; --cert-bd: rgba(138,180,248,.3);
+  --chip-bg:  rgba(138,180,248,.18); --chip-fg: #8ab4f8;
+  --sidebar-bg: #35363a;
   --sidebar-w:  230px;
   --dot-confirmed: #81c995;
   --dot-scheduled: #8ab4f8;
-  --hero-bg: #292a2d;
-  --hero-border: #494c50;
+  --hero-bg: #404144;
+  --hero-border: #5f6368;
 }
 
 /* Chrome/Material fills for chrome theme */
 [data-skin="chrome"] input,
 [data-skin="chrome"] select,
 [data-skin="chrome"] textarea {
-  background: #35363a;
-  border-color: #494c50;
+  background: #4a4c50;
+  border-color: #5f6368;
   color: #e8eaed;
 }
 [data-skin="chrome"] .btn {
-  background: #35363a;
-  border-color: #494c50;
+  background: #4a4c50;
+  border-color: #5f6368;
 }
 [data-skin="chrome"] .btn-primary {
   background: #8ab4f8;
   border-color: #8ab4f8;
-  color: #202124;
+  color: #35363a;
 }
 
 [data-skin="sports"] {
@@ -795,7 +796,7 @@ body {
 .skin-btn[data-skin="native"]       { background: linear-gradient(135deg,#1c1c1e 50%,#0a84ff 50%); }
 .skin-btn[data-skin="night-vision"] { background: linear-gradient(135deg,#000a00 50%,#39ff14 50%); }
 .skin-btn[data-skin="cobalt"]       { background: linear-gradient(135deg,#080f1c 50%,#4d8fff 50%); }
-.skin-btn[data-skin="chrome"]       { background: linear-gradient(135deg,#202124 50%,#8ab4f8 50%); }
+.skin-btn[data-skin="chrome"]       { background: linear-gradient(135deg,#35363a 50%,#8ab4f8 50%); }
 .skin-btn[data-skin="sports"]       { background: linear-gradient(135deg,#2e1a0a 50%,#e06820 50%); }
 .skin-btn[data-skin="parallax"]     { background: linear-gradient(135deg,#0f0f1e 50%,#9b8fff 50%); }
 
