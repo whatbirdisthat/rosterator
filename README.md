@@ -1,13 +1,13 @@
-# rosteroo
+# rosterator
 
-Deployment-only repository for the rosteroo SPA
+Deployment-only repository for the rosterator SPA
 
-Maintained automatically by `make push-rosteroo` in FootyManager.
+Maintained automatically by `make push-rosterator` in FootyManager.
 Do not edit files here directly -- all source changes happen in FootyManager.
 
 Live:
-- GitHub Pages: https://whatbirdisthat.github.io/rosteroo
-- Vercel: https://rosteroo.vercel.app
+- GitHub Pages: https://whatbirdisthat.github.io/rosterator
+- Vercel: https://rosterator.vercel.app
 
 
 
