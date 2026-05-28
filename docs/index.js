@@ -2570,7 +2570,7 @@ function setSkin(name) {
 
 function restoreSkin() {
   const saved = localStorage.getItem('roster-skin');
-  if (saved && ['dark', 'forest', 'sunset', 'nautical', 'cobalt', 'night-vision', 'native', 'chrome', 'sports', 'parallax', 'forest-shadows'].includes(saved)) setSkin(saved);
+  if (saved && ['dark', 'forest', 'sunset', 'nautical', 'cobalt', 'night-vision', 'native', 'chrome', 'sports', 'parallax', 'forest-shadows', 'saturn'].includes(saved)) setSkin(saved);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────

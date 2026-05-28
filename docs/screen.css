@@ -470,6 +470,45 @@
   --hero-border: #1e3220;
 }
 
+[data-skin="saturn"] {
+  --bg:         #0c0804;
+  --bg2:        #140e06;
+  --bg3:        #1c1408;
+  --border:     #2c1e0a;
+  --border2:    #3c2c14;
+  --text:       #f0dfa0;
+  --text2:      #c09840;
+  --muted:      #806030;
+  --accent:     #f0b020;
+  --accent2:    #c88010;
+  --warn:       #e08828;
+  --error:      #e05050;
+  --confirmed:  #60c880;
+  --scheduled:  #60a8e0;
+  --tag-a:      #60a8e0;
+  --tag-b:      #b878e8;
+  --tag-shared: #f0b020;
+  --radius:     6px;
+  --font-head:  'Lora', serif;
+  --font-body:  'DM Mono', monospace;
+  --font-size:  13px;
+  --shadow:     0 4px 20px rgba(0,0,0,.7), 0 1px 4px rgba(20,10,0,.5);
+  --pill-ok-bg:   #0c1c08; --pill-ok-fg:   #60c880;
+  --pill-warn-bg: #1c0e04; --pill-warn-fg: #e08828;
+  --pill-err-bg:  #1c0808; --pill-err-fg:  #e05050;
+  --stag-a-bg:  rgba(96,168,224,.12); --stag-b-bg: rgba(184,120,232,.12); --stag-s-bg: rgba(240,176,32,.1);
+  --vtag-pref-bg:  rgba(96,200,128,.1);  --vtag-pref-fg:  #60c880; --vtag-pref-bd: rgba(96,200,128,.2);
+  --vtag-avoid-bg: rgba(224,80,80,.1);   --vtag-avoid-fg: #e05050; --vtag-avoid-bd: rgba(224,80,80,.2);
+  --cert-bg: rgba(240,176,32,.1); --cert-fg: #f0b020; --cert-bd: rgba(240,176,32,.2);
+  --chip-bg:  rgba(240,176,32,.12); --chip-fg: #f0b020;
+  --sidebar-bg: #080604;
+  --sidebar-w:  230px;
+  --dot-confirmed: #60c880;
+  --dot-scheduled: #60a8e0;
+  --hero-bg: #140e06;
+  --hero-border: #2c1e0a;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    RESET & BASE
    ═══════════════════════════════════════════════════════════════ */
@@ -839,6 +878,7 @@ body {
 .skin-btn[data-skin="sports"]       { background: linear-gradient(135deg,#2e1a0a 50%,#e06820 50%); }
 .skin-btn[data-skin="parallax"]       { background: linear-gradient(135deg,#0f0f1e 50%,#9b8fff 50%); }
 .skin-btn[data-skin="forest-shadows"] { background: linear-gradient(135deg,#0d1a0d 50%,#4cd87a 50%); }
+.skin-btn[data-skin="saturn"]         { background: linear-gradient(135deg,#0c0804 50%,#f0b020 50%); }
 
 /* ═══════════════════════════════════════════════════════════════
    DASHBOARD
