@@ -509,6 +509,45 @@
   --hero-border: #2c1e0a;
 }
 
+[data-skin="andres-de-poitrein"] {
+  --bg:         #18181e;
+  --bg2:        #202028;
+  --bg3:        #282833;
+  --border:     #32323e;
+  --border2:    #40404e;
+  --text:       #ccc8d8;
+  --text2:      #8c88a0;
+  --muted:      #585668;
+  --accent:     #a88bc8;
+  --accent2:    #8868a8;
+  --warn:       #c89050;
+  --error:      #c86878;
+  --confirmed:  #68b090;
+  --scheduled:  #7890c8;
+  --tag-a:      #7890c8;
+  --tag-b:      #b878d8;
+  --tag-shared: #a88bc8;
+  --radius:     6px;
+  --font-head:  'Syne', sans-serif;
+  --font-body:  'DM Mono', monospace;
+  --font-size:  13px;
+  --shadow:     0 4px 16px rgba(0,0,0,.5), 0 1px 4px rgba(0,0,0,.3);
+  --pill-ok-bg:   #182820; --pill-ok-fg:   #68b090;
+  --pill-warn-bg: #28200c; --pill-warn-fg: #c89050;
+  --pill-err-bg:  #281018; --pill-err-fg:  #c86878;
+  --stag-a-bg:  rgba(120,144,200,.12); --stag-b-bg: rgba(168,120,200,.12); --stag-s-bg: rgba(168,139,200,.1);
+  --vtag-pref-bg:  rgba(104,176,144,.1);  --vtag-pref-fg:  #68b090; --vtag-pref-bd: rgba(104,176,144,.2);
+  --vtag-avoid-bg: rgba(200,104,120,.1);  --vtag-avoid-fg: #c86878; --vtag-avoid-bd: rgba(200,104,120,.2);
+  --cert-bg: rgba(168,139,200,.1); --cert-fg: #a88bc8; --cert-bd: rgba(168,139,200,.2);
+  --chip-bg:  rgba(168,139,200,.12); --chip-fg: #a88bc8;
+  --sidebar-bg: #141418;
+  --sidebar-w:  230px;
+  --dot-confirmed: #68b090;
+  --dot-scheduled: #7890c8;
+  --hero-bg: #202028;
+  --hero-border: #32323e;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    RESET & BASE
    ═══════════════════════════════════════════════════════════════ */
@@ -878,7 +917,8 @@ body {
 .skin-btn[data-skin="sports"]       { background: linear-gradient(135deg,#2e1a0a 50%,#e06820 50%); }
 .skin-btn[data-skin="parallax"]       { background: linear-gradient(135deg,#0f0f1e 50%,#9b8fff 50%); }
 .skin-btn[data-skin="forest-shadows"] { background: linear-gradient(135deg,#0d1a0d 50%,#4cd87a 50%); }
-.skin-btn[data-skin="saturn"]         { background: linear-gradient(135deg,#0c0804 50%,#f0b020 50%); }
+.skin-btn[data-skin="saturn"]              { background: linear-gradient(135deg,#0c0804 50%,#f0b020 50%); }
+.skin-btn[data-skin="andres-de-poitrein"] { background: linear-gradient(135deg,#202028 50%,#a88bc8 50%); }
 
 /* ═══════════════════════════════════════════════════════════════
    DASHBOARD
