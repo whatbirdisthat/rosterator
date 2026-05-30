@@ -2231,3 +2231,51 @@ dialog#dataDialog h3 {
 @media print {
   .vol-swap-btn { display: none !important; }
 }
+
+/* ── Wizard step progressive reveal ──────────────────────────────────────── */
+
+.wizard-step {
+  transition: opacity 0.25s ease, max-height 0.3s ease;
+  max-height: 600px;
+  opacity: 1;
+  overflow: hidden;
+}
+.wizard-step.wizard-hidden {
+  opacity: 0;
+  max-height: 0;
+  pointer-events: none;
+}
+.wizard-step + .wizard-step { margin-top: 16px; }
+.wizard-hint {
+  font-size: 0.8rem;
+  color: var(--muted, #888);
+  margin-top: 4px;
+}
+.wizard-comms-hint {
+  font-size: 0.85rem;
+  color: var(--accent, #4f8);
+  margin-top: 6px;
+  font-style: italic;
+  min-height: 1.2em;
+}
+.wizard-step-counter {
+  font-size: 0.75rem;
+  color: var(--muted, #888);
+  text-align: right;
+  margin-bottom: 12px;
+}
+.wizard-completion { animation: fadein .2s ease; }
+.wizard-roster-preview {
+  margin: 12px 0;
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: var(--text2, #ccc);
+}
+.data-field-readonly {
+  font-size: 0.85rem;
+  color: var(--muted, #888);
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  background: var(--bg2, #222);
+  border-radius: 4px;
+}

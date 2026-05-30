@@ -1,0 +1,590 @@
+[
+  {
+    "grade_id": 1,
+    "grade_name": "Division 1 - Eastland Senior Men",
+    "day": "Saturday",
+    "gender": "Men",
+    "age_group": "Senior"
+  },
+  {
+    "grade_id": 2,
+    "grade_name": "Division 1 - Reserve Men",
+    "day": "Saturday",
+    "gender": "Men",
+    "age_group": "Senior"
+  },
+  {
+    "grade_id": 3,
+    "grade_name": "Division 1 - U19.5",
+    "day": "Saturday",
+    "gender": "Men",
+    "age_group": "Senior"
+  },
+  {
+    "grade_id": 4,
+    "grade_name": "Division 2 - Eastland Senior Men",
+    "day": "Saturday",
+    "gender": "Men",
+    "age_group": "Senior"
+  },
+  {
+    "grade_id": 5,
+    "grade_name": "Division 2 - Reserve Men",
+    "day": "Saturday",
+    "gender": "Men",
+    "age_group": "Senior"
+  },
+  {
+    "grade_id": 6,
+    "grade_name": "Division 2 - U19.5",
+    "day": "Saturday",
+    "gender": "Men",
+    "age_group": "Senior"
+  },
+  {
+    "grade_id": 7,
+    "grade_name": "Division 3 - Eastland Senior Men",
+    "day": "Saturday",
+    "gender": "Men",
+    "age_group": "Senior"
+  },
+  {
+    "grade_id": 8,
+    "grade_name": "Division 3 - Reserve Men",
+    "day": "Saturday",
+    "gender": "Men",
+    "age_group": "Senior"
+  },
+  {
+    "grade_id": 9,
+    "grade_name": "Division 3 - U19.5",
+    "day": "Saturday",
+    "gender": "Men",
+    "age_group": "Senior"
+  },
+  {
+    "grade_id": 10,
+    "grade_name": "Division 4 - Eastland Senior Men",
+    "day": "Saturday",
+    "gender": "Men",
+    "age_group": "Senior"
+  },
+  {
+    "grade_id": 11,
+    "grade_name": "Division 4 - Reserve Men",
+    "day": "Saturday",
+    "gender": "Men",
+    "age_group": "Senior"
+  },
+  {
+    "grade_id": 12,
+    "grade_name": "Division 4 - U19.5",
+    "day": "Saturday",
+    "gender": "Men",
+    "age_group": "Senior"
+  },
+  {
+    "grade_id": 13,
+    "grade_name": "Deakin Uni Senior Women - Premier Division",
+    "day": "Saturday",
+    "gender": "Women",
+    "age_group": "Senior"
+  },
+  {
+    "grade_id": 14,
+    "grade_name": "Deakin Uni Women - Division 1",
+    "day": "Saturday",
+    "gender": "Women",
+    "age_group": "Senior"
+  },
+  {
+    "grade_id": 15,
+    "grade_name": "Deakin Uni Women - Division 2",
+    "day": "Saturday",
+    "gender": "Women",
+    "age_group": "Senior"
+  },
+  {
+    "grade_id": 16,
+    "grade_name": "Deakin Uni Women - Division 3",
+    "day": "Saturday",
+    "gender": "Women",
+    "age_group": "Senior"
+  },
+  {
+    "grade_id": 17,
+    "grade_name": "Deakin Uni Women - Division 4",
+    "day": "Saturday",
+    "gender": "Women",
+    "age_group": "Senior"
+  },
+  {
+    "grade_id": 18,
+    "grade_name": "Deakin Uni Women - Division 5",
+    "day": "Saturday",
+    "gender": "Women",
+    "age_group": "Senior"
+  },
+  {
+    "grade_id": 19,
+    "grade_name": "Veterans - Women",
+    "day": "Saturday",
+    "gender": "Women",
+    "age_group": "Senior"
+  },
+  {
+    "grade_id": 20,
+    "grade_name": "U8 Girls",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U8"
+  },
+  {
+    "grade_id": 21,
+    "grade_name": "U8 - Eastern",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U8"
+  },
+  {
+    "grade_id": 22,
+    "grade_name": "U8 - North",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U8"
+  },
+  {
+    "grade_id": 23,
+    "grade_name": "U8 - South",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U8"
+  },
+  {
+    "grade_id": 24,
+    "grade_name": "U8 - West",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U8"
+  },
+  {
+    "grade_id": 25,
+    "grade_name": "U9 - Black",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U9"
+  },
+  {
+    "grade_id": 26,
+    "grade_name": "U9 - Blue",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U9"
+  },
+  {
+    "grade_id": 27,
+    "grade_name": "U9 - Gold",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U9"
+  },
+  {
+    "grade_id": 28,
+    "grade_name": "U9 - Red",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U9"
+  },
+  {
+    "grade_id": 29,
+    "grade_name": "U9 - White",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U9"
+  },
+  {
+    "grade_id": 30,
+    "grade_name": "U10 Girls - Black",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U10"
+  },
+  {
+    "grade_id": 31,
+    "grade_name": "U10 Girls - Red",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U10"
+  },
+  {
+    "grade_id": 32,
+    "grade_name": "U10 - Black",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U10"
+  },
+  {
+    "grade_id": 33,
+    "grade_name": "U10 - Blue",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U10"
+  },
+  {
+    "grade_id": 34,
+    "grade_name": "U10 - Red",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U10"
+  },
+  {
+    "grade_id": 35,
+    "grade_name": "U10 - White",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U10"
+  },
+  {
+    "grade_id": 36,
+    "grade_name": "U11 - A",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U11"
+  },
+  {
+    "grade_id": 37,
+    "grade_name": "U11 - B",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U11"
+  },
+  {
+    "grade_id": 38,
+    "grade_name": "U11 - C",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U11"
+  },
+  {
+    "grade_id": 39,
+    "grade_name": "U11 - D1",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U11"
+  },
+  {
+    "grade_id": 40,
+    "grade_name": "U11 - D2",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U11"
+  },
+  {
+    "grade_id": 41,
+    "grade_name": "U12 Girls - A",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U12"
+  },
+  {
+    "grade_id": 42,
+    "grade_name": "U12 Girls - B",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U12"
+  },
+  {
+    "grade_id": 43,
+    "grade_name": "U12 Girls - C",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U12"
+  },
+  {
+    "grade_id": 44,
+    "grade_name": "U12 Girls - D",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U12"
+  },
+  {
+    "grade_id": 45,
+    "grade_name": "U12 Girls (Grading)",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U12"
+  },
+  {
+    "grade_id": 46,
+    "grade_name": "U12 - A",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U12"
+  },
+  {
+    "grade_id": 47,
+    "grade_name": "U12 - B",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U12"
+  },
+  {
+    "grade_id": 48,
+    "grade_name": "U12 - C",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U12"
+  },
+  {
+    "grade_id": 49,
+    "grade_name": "U12 - D",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U12"
+  },
+  {
+    "grade_id": 50,
+    "grade_name": "U13 - A",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U13"
+  },
+  {
+    "grade_id": 51,
+    "grade_name": "U13 - B",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U13"
+  },
+  {
+    "grade_id": 52,
+    "grade_name": "U13 - C",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U13"
+  },
+  {
+    "grade_id": 53,
+    "grade_name": "U13 - D1",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U13"
+  },
+  {
+    "grade_id": 54,
+    "grade_name": "U13 - D2",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U13"
+  },
+  {
+    "grade_id": 55,
+    "grade_name": "U14 Girls - A",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U14"
+  },
+  {
+    "grade_id": 56,
+    "grade_name": "U14 Girls - B",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U14"
+  },
+  {
+    "grade_id": 57,
+    "grade_name": "U14 Girls - C",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U14"
+  },
+  {
+    "grade_id": 58,
+    "grade_name": "U14 Girls - D",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U14"
+  },
+  {
+    "grade_id": 59,
+    "grade_name": "U14 Girls (Grading)",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U14"
+  },
+  {
+    "grade_id": 60,
+    "grade_name": "U14 - A",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U14"
+  },
+  {
+    "grade_id": 61,
+    "grade_name": "U14 - B",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U14"
+  },
+  {
+    "grade_id": 62,
+    "grade_name": "U14 - C",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U14"
+  },
+  {
+    "grade_id": 63,
+    "grade_name": "U14 - D",
+    "day": "Sunday",
+    "gender": "Mixed",
+    "age_group": "U14"
+  },
+  {
+    "grade_id": 64,
+    "grade_name": "U15 - A",
+    "day": "Sunday",
+    "gender": "Boys",
+    "age_group": "U15"
+  },
+  {
+    "grade_id": 65,
+    "grade_name": "U15 - B",
+    "day": "Sunday",
+    "gender": "Boys",
+    "age_group": "U15"
+  },
+  {
+    "grade_id": 66,
+    "grade_name": "U15 - C",
+    "day": "Sunday",
+    "gender": "Boys",
+    "age_group": "U15"
+  },
+  {
+    "grade_id": 67,
+    "grade_name": "U15 - D",
+    "day": "Sunday",
+    "gender": "Boys",
+    "age_group": "U15"
+  },
+  {
+    "grade_id": 68,
+    "grade_name": "U16 - A",
+    "day": "Sunday",
+    "gender": "Boys",
+    "age_group": "U16"
+  },
+  {
+    "grade_id": 69,
+    "grade_name": "U16 - B",
+    "day": "Sunday",
+    "gender": "Boys",
+    "age_group": "U16"
+  },
+  {
+    "grade_id": 70,
+    "grade_name": "U16 - C",
+    "day": "Sunday",
+    "gender": "Boys",
+    "age_group": "U16"
+  },
+  {
+    "grade_id": 71,
+    "grade_name": "U16 - D",
+    "day": "Sunday",
+    "gender": "Boys",
+    "age_group": "U16"
+  },
+  {
+    "grade_id": 72,
+    "grade_name": "Deakin Uni - U16 Girls - A",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U16"
+  },
+  {
+    "grade_id": 73,
+    "grade_name": "Deakin Uni - U16 Girls - B",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U16"
+  },
+  {
+    "grade_id": 74,
+    "grade_name": "Deakin Uni - U16 Girls - C",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U16"
+  },
+  {
+    "grade_id": 75,
+    "grade_name": "Deakin Uni - U16 Girls - D",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U16"
+  },
+  {
+    "grade_id": 76,
+    "grade_name": "Deakin Uni - U16 Girls (Grading)",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U16"
+  },
+  {
+    "grade_id": 77,
+    "grade_name": "U17.5 - A",
+    "day": "Sunday",
+    "gender": "Boys",
+    "age_group": "U17"
+  },
+  {
+    "grade_id": 78,
+    "grade_name": "U17.5 - B",
+    "day": "Sunday",
+    "gender": "Boys",
+    "age_group": "U17"
+  },
+  {
+    "grade_id": 79,
+    "grade_name": "U17.5 - C",
+    "day": "Sunday",
+    "gender": "Boys",
+    "age_group": "U17"
+  },
+  {
+    "grade_id": 80,
+    "grade_name": "U17.5 - D",
+    "day": "Sunday",
+    "gender": "Boys",
+    "age_group": "U17"
+  },
+  {
+    "grade_id": 81,
+    "grade_name": "Deakin Uni - U18 Girls - A/B",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U18"
+  },
+  {
+    "grade_id": 82,
+    "grade_name": "Deakin Uni - U18 Girls - C",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U18"
+  },
+  {
+    "grade_id": 83,
+    "grade_name": "Deakin Uni - U18 Girls (Grading)",
+    "day": "Sunday",
+    "gender": "Girls",
+    "age_group": "U18"
+  },
+  {
+    "grade_id": 84,
+    "grade_name": "Veterans - Mens",
+    "day": "Sunday",
+    "gender": "Men",
+    "age_group": "Senior"
+  }
+]

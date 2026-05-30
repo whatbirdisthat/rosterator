@@ -1,7 +1,11 @@
 'use strict';
 // USP-020..022, USP-053, USP-060: Onboarding wizard for USER_SPA
+// 4-step progressive flow: Club → Grade → Player count → Team name → "Let's Go!"
 
+const DRAFT_KEY = 'footy-wizard-draft';
 const REQUIRED_IMPORT_KEYS = ['user_team'];
+
+// ── Utilities ─────────────────────────────────────────────────────────────
 
 function escHtml(str) {
   return String(str ?? '')
@@ -11,40 +15,34 @@ function escHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-async function fetchClubs() {
+async function fetchJson(url) {
   try {
-    const res = await fetch('./data/clubs.json');
-    if (!res.ok) throw new Error('clubs unavailable');
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`${url} unavailable`);
     return await res.json();
   } catch (_) {
     return [];
   }
 }
 
-async function fetchRoundsTemplate() {
-  try {
-    const res = await fetch('./data/rounds-template.json');
-    if (!res.ok) throw new Error('rounds template unavailable');
-    return await res.json();
-  } catch (_) {
-    return [];
-  }
+// ── Draft persistence ─────────────────────────────────────────────────────
+
+function saveDraft(draft) {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch (_) {}
 }
 
-function validateImportFile(content) {
-  let parsed;
+function loadDraft() {
   try {
-    parsed = JSON.parse(content);
-  } catch (_) {
-    throw new Error('Invalid file — could not parse JSON');
-  }
-  for (const key of REQUIRED_IMPORT_KEYS) {
-    if (!(key in parsed)) {
-      throw new Error(`Import failed: missing required key '${key}'`);
-    }
-  }
-  return parsed;
+    const raw = localStorage.getItem(DRAFT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) { return null; }
 }
+
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch (_) {}
+}
+
+// ── Wizard DOM helpers ────────────────────────────────────────────────────
 
 function showWizardEl() {
   const el = document.getElementById('wizard');
@@ -78,154 +76,66 @@ function clearWizardError() {
   document.querySelectorAll('.wizard-error').forEach(e => e.remove());
 }
 
-// ── Roster grid ───────────────────────────────────────────────────────────
+// ── Wizard chrome (Back + Start over, outside wizardContent) ──────────────
 
-function rosterGridHtml(rows = 5) {
-  const rowsHtml = Array.from({ length: rows }, (_, i) => `
-    <div class="wizard-roster-row">
-      <input class="jumper-input" type="text" placeholder="#" aria-label="Jumper number row ${i + 1}" style="width:60px">
-      <input class="name-input" type="text" placeholder="Player name" aria-label="Player name row ${i + 1}" style="flex:1">
-    </div>`).join('');
-  return `<div id="wizardRoster" style="display:flex;flex-direction:column;gap:4px;margin-top:8px">${rowsHtml}</div>`;
-}
-
-function getRosterValues() {
-  const rows = document.querySelectorAll('#wizardRoster .wizard-roster-row');
-  return Array.from(rows)
-    .map(row => ({
-      jumper: row.querySelector('.jumper-input')?.value?.trim() || '',
-      name: row.querySelector('.name-input')?.value?.trim() || '',
-    }))
-    .filter(r => r.jumper || r.name);
-}
-
-// ── Start fresh flow ──────────────────────────────────────────────────────
-
-async function showStartFresh(clubs, onComplete) {
-  const clubOpts = clubs.map(c =>
-    `<option value="${escHtml(String(c.club_id))}">${escHtml(c.name)}</option>`
-  ).join('');
-
-  setWizardContent(`
-    <h2 style="margin-bottom:1rem">Set up your team</h2>
-    <div style="margin-bottom:12px">
-      <label style="display:block;margin-bottom:4px;font-size:0.85rem">Club</label>
-      <select id="wizardClubPicker" style="width:100%">
-        <option value="">— select club —</option>
-        ${clubOpts}
-      </select>
-    </div>
-    <div style="margin-bottom:12px">
-      <label style="display:block;margin-bottom:4px;font-size:0.85rem">Team name</label>
-      <input id="wizardTeamName" type="text" placeholder="e.g. Vermont U9 Purple" style="width:100%">
-    </div>
-    <div style="margin-bottom:12px">
-      <label style="display:block;margin-bottom:4px;font-size:0.85rem">Roster (optional)</label>
-      ${rosterGridHtml(5)}
-    </div>
-    <div style="display:flex;gap:8px;margin-top:16px">
-      <button id="wizardBack" class="btn" type="button">← Back</button>
-      <button id="wizardConfirm" class="btn btn-primary" type="button">Confirm</button>
-    </div>
-  `);
-
-  document.getElementById('wizardBack').addEventListener('click', () => showLanding(onComplete));
-
-  document.getElementById('wizardConfirm').addEventListener('click', async () => {
-    clearWizardError();
-    const clubId = document.getElementById('wizardClubPicker')?.value || '';
-    const teamName = document.getElementById('wizardTeamName')?.value?.trim() || '';
-    if (!teamName) { showWizardError('Please enter a team name'); return; }
-
-    const roster = getRosterValues();
-    const state = {
-      user_team: { club_id: clubId, team_name: teamName, roster },
-      round_summary: { rounds: [] },
-      reference_data: { clubs, locations: [], jobs: [], players: [], volunteers: [], splits: [] },
-    };
-
-    // Offer rounds template seeding
-    await showSeedRoundsPrompt(teamName, state, onComplete);
-  });
-}
-
-// ── Rounds template seeding ───────────────────────────────────────────────
-
-async function showSeedRoundsPrompt(teamName, state, onComplete) {
-  const template = await fetchRoundsTemplate();
-  const matching = template.filter(r =>
-    r.team1 === teamName || r.team2 === teamName
-  );
-
-  if (matching.length === 0) {
-    hideWizardEl();
-    onComplete(state);
-    return;
+function setWizardChrome({ showBack = false, onBack = null }) {
+  let chrome = document.getElementById('wizardChrome');
+  if (!chrome) {
+    chrome = document.createElement('div');
+    chrome.id = 'wizardChrome';
+    chrome.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:12px;border-top:1px solid var(--border,#333)';
+    const box = document.getElementById('wizardBox');
+    if (box) box.appendChild(chrome);
   }
-
-  setWizardContent(`
-    <h2 style="margin-bottom:0.75rem">Seed rounds from template?</h2>
-    <p style="margin-bottom:1rem;font-size:0.9rem">
-      Found <strong>${matching.length}</strong> games for <em>${escHtml(teamName)}</em>
-      in the 2026 season fixture. Pre-fill your rounds list?
-    </p>
-    <div id="wizardSeedRounds" style="display:block">
-      <div style="display:flex;gap:8px">
-        <button id="wizardSeedDecline" class="btn" type="button">No thanks</button>
-        <button id="wizardSeedAccept" class="btn btn-primary" type="button">Yes, seed rounds</button>
-      </div>
-    </div>
-  `);
-
-  document.getElementById('wizardSeedDecline').addEventListener('click', () => {
-    hideWizardEl();
-    onComplete(state);
-  });
-
-  document.getElementById('wizardSeedAccept').addEventListener('click', () => {
-    const seeded = matching.map((r, idx) => {
-      const roundNum = idx + 1;
-      const isHome = r.team1 === teamName;
-      const opposition = isHome ? r.team2 : r.team1;
-      // parse "Sunday, 19 April 2026" → "2026-04-19"
-      const dateStr = parseFixtureDate(r.date);
-      const venue = r.venue ? r.venue.split('/')[0].trim() : '';
-      return {
-        round: roundNum,
-        date: dateStr,
-        time: r.time || '',
-        home_away: isHome ? 'h' : 'a',
-        opposition,
-        location: venue,
-        opposition_club_id: '',
-        location_id: '',
-      };
-    });
-    state.round_summary = { rounds: seeded };
-    hideWizardEl();
-    onComplete(state);
+  chrome.innerHTML = `
+    ${showBack ? '<button id="wizardBackBtn" class="btn" type="button" style="font-size:0.8rem">← Back</button>' : '<span></span>'}
+    <button id="wizardStartOver" class="btn" type="button" style="font-size:0.75rem;color:var(--muted,#888)">Start over</button>
+  `;
+  if (showBack && onBack) {
+    chrome.querySelector('#wizardBackBtn').addEventListener('click', onBack);
+  }
+  // Start over always clears draft and restarts
+  chrome.querySelector('#wizardStartOver').addEventListener('click', () => {
+    clearDraft();
+    // Will be re-assigned by the outer showWizard closure — use event to signal
+    document.dispatchEvent(new CustomEvent('wizard-restart'));
   });
 }
 
-function parseFixtureDate(raw) {
-  if (!raw) return '';
-  // already ISO: "2026-04-19" → return as-is
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-  // "Sunday, 19 April 2026" or "19 April 2026" → "2026-04-19"
-  const months = {
-    January: '01', February: '02', March: '03', April: '04',
-    May: '05', June: '06', July: '07', August: '08',
-    September: '09', October: '10', November: '11', December: '12',
-  };
-  const m = raw.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/);
-  if (!m) return '';
-  const day = m[1].padStart(2, '0');
-  const month = months[m[2]] || '01';
-  const year = m[3];
-  return `${year}-${month}-${day}`;
+function removeWizardChrome() {
+  const chrome = document.getElementById('wizardChrome');
+  if (chrome) chrome.remove();
+}
+
+// ── Random name + jumper generation ──────────────────────────────────────
+
+function pickRandom(arr, n) {
+  const shuffled = [...arr].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, n);
+}
+
+function buildRoster(randomNames, count) {
+  const names = pickRandom(randomNames, Math.min(count, randomNames.length));
+  const jumpers = pickRandom(Array.from({ length: 51 }, (_, i) => i + 1), count);
+  return names.map((name, i) => ({ jumper: String(jumpers[i] ?? (i + 1)), name }));
 }
 
 // ── Import flow ───────────────────────────────────────────────────────────
+
+function validateImportFile(content) {
+  let parsed;
+  try {
+    parsed = JSON.parse(content);
+  } catch (_) {
+    throw new Error('Invalid file — could not parse JSON');
+  }
+  for (const key of REQUIRED_IMPORT_KEYS) {
+    if (!(key in parsed)) {
+      throw new Error(`Import failed: missing required key '${key}'`);
+    }
+  }
+  return parsed;
+}
 
 function showImport(onComplete) {
   setWizardContent(`
@@ -238,9 +148,6 @@ function showImport(onComplete) {
       <label for="wizardImportFile" style="cursor:pointer;font-size:0.9rem">
         Click to choose a file <br><span style="font-size:0.8rem;color:var(--muted,#888)">or drop it here</span>
       </label>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:4px">
-      <button id="wizardBack" class="btn" type="button">← Back</button>
     </div>
   `);
 
@@ -259,8 +166,6 @@ function showImport(onComplete) {
     const file = e.dataTransfer?.files?.[0];
     if (file) processImportFile(file, onComplete);
   });
-
-  document.getElementById('wizardBack').addEventListener('click', () => showLanding(onComplete));
 }
 
 function processImportFile(file, onComplete) {
@@ -269,10 +174,11 @@ function processImportFile(file, onComplete) {
   reader.onload = (e) => {
     try {
       const parsed = validateImportFile(e.target.result);
-      // Ensure required sub-structures exist
       if (!parsed.round_summary) parsed.round_summary = { rounds: [] };
       if (!parsed.reference_data) parsed.reference_data = {};
+      clearDraft();
       hideWizardEl();
+      removeWizardChrome();
       onComplete(parsed);
     } catch (err) {
       showWizardError(err.message);
@@ -282,35 +188,361 @@ function processImportFile(file, onComplete) {
   reader.readAsText(file);
 }
 
-// ── Landing screen ────────────────────────────────────────────────────────
+// ── Completion screen ─────────────────────────────────────────────────────
 
-async function showLanding(onComplete) {
-  const clubs = await fetchClubs();
+function showCompletionScreen(state, onComplete) {
+  const { user_team } = state;
+  const roster = user_team.roster || [];
+  const previewRows = roster.slice(0, 5).map(r =>
+    `<div style="display:flex;justify-content:space-between;padding:2px 0">
+       <span>${escHtml(r.name)}</span>
+       <span style="color:var(--muted,#888)">#${escHtml(r.jumper)}</span>
+     </div>`
+  ).join('');
+  const more = roster.length > 5 ? `<div style="color:var(--muted,#888);font-size:0.8rem;margin-top:4px">… and ${roster.length - 5} more</div>` : '';
 
   setWizardContent(`
-    <h2 style="margin-bottom:0.5rem">Welcome to FootyManager</h2>
-    <p style="margin-bottom:1.5rem;font-size:0.9rem;color:var(--muted,#aaa)">
-      How would you like to get started?
-    </p>
-    <div style="display:flex;gap:12px;flex-wrap:wrap">
-      <button id="wizardStartFresh" class="btn btn-primary" type="button" style="flex:1;min-width:140px">
-        ✦ Start fresh<br>
-        <span style="font-size:0.75rem;font-weight:400">Enter my team details</span>
-      </button>
-      <button id="wizardImportBtn" class="btn" type="button" style="flex:1;min-width:140px">
-        ↑ Import<br>
-        <span style="font-size:0.75rem;font-weight:400">Load from a saved file</span>
+    <div class="wizard-completion">
+      <h2 style="margin-bottom:0.25rem">✦ ${escHtml(user_team.team_name)}</h2>
+      <p style="font-size:0.85rem;color:var(--muted,#888);margin-bottom:1rem">
+        ${escHtml(user_team.club_name)} · ${escHtml(user_team.grade_name)} · ${escHtml(user_team.age_group)}
+        ${user_team.gender ? ' · ' + escHtml(user_team.gender) : ''}
+        · ${roster.length} player${roster.length !== 1 ? 's' : ''}
+      </p>
+      <div class="wizard-roster-preview">${previewRows}${more}</div>
+      <p class="wizard-hint" style="margin-bottom:16px">
+        You can edit player names and numbers any time in the App under DATA.
+      </p>
+      <button id="wizardLetsGo" class="btn btn-primary" type="button"
+              style="width:100%;padding:14px;font-size:1.05rem">
+        ✦ Let's Go!
       </button>
     </div>
   `);
 
-  document.getElementById('wizardStartFresh').addEventListener('click', () => showStartFresh(clubs, onComplete));
-  document.getElementById('wizardImportBtn').addEventListener('click', () => showImport(onComplete));
+  document.getElementById('wizardLetsGo').addEventListener('click', () => {
+    clearDraft();
+    hideWizardEl();
+    removeWizardChrome();
+    onComplete(state);
+  });
+}
+
+// ── 4-step progressive flow ───────────────────────────────────────────────
+
+async function showStartFresh(refData, draft, onComplete) {
+  const { clubs, grades, randomNames, roundsTemplate } = refData;
+
+  // State
+  let selectedClub   = draft?.selectedClub  || null;
+  let selectedGrade  = draft?.selectedGrade || null;
+  let playerCount    = draft?.playerCount   || null;
+  let roster         = draft?.roster        || null;
+  let teamName       = draft?.teamName      || '';
+
+  const clubOpts = clubs
+    .slice().sort((a, b) => a.name.localeCompare(b.name))
+    .map(c => `<option value="${escHtml(String(c.club_id))}"
+      ${selectedClub && String(selectedClub.club_id) === String(c.club_id) ? 'selected' : ''}>
+      ${escHtml(c.name)}</option>`).join('');
+
+  const gradeOpts = grades
+    .map(g => `<option value="${escHtml(String(g.grade_id))}"
+      ${selectedGrade && String(selectedGrade.grade_id) === String(g.grade_id) ? 'selected' : ''}>
+      ${escHtml(g.grade_name)}</option>`).join('');
+
+  setWizardContent(`
+    <div class="wizard-step-counter" id="wzCounter">1 / 4</div>
+
+    <!-- Step 1: Club -->
+    <div class="wizard-step" id="wzStep1">
+      <label style="display:block;margin-bottom:6px;font-size:0.85rem">Which club are you from?</label>
+      <select id="wzClub" style="width:100%">
+        <option value="">— select your club —</option>
+        ${clubOpts}
+      </select>
+      <p class="wizard-hint" style="margin-top:8px">
+        <a href="#" id="wzImportLink" style="color:var(--muted,#888);font-size:0.8rem">Already have a file? Import instead ↑</a>
+      </p>
+    </div>
+
+    <!-- Step 2: Grade -->
+    <div class="wizard-step wizard-hidden" id="wzStep2">
+      <label style="display:block;margin-bottom:6px;font-size:0.85rem">What grade do you play in?</label>
+      <select id="wzGrade" style="width:100%">
+        <option value="">— select your grade —</option>
+        ${gradeOpts}
+      </select>
+      <p class="wizard-hint" id="wzDayHint" style="margin-top:4px"></p>
+    </div>
+
+    <!-- Step 3: Player count -->
+    <div class="wizard-step wizard-hidden" id="wzStep3">
+      <label style="display:block;margin-bottom:6px;font-size:0.85rem">How many players on your team?</label>
+      <input id="wzPlayerCount" type="number" min="1" max="30" style="width:80px"
+             value="${playerCount || ''}">
+      <p class="wizard-hint" style="margin-top:4px">We'll pre-fill their names — you can edit them any time under DATA.</p>
+    </div>
+
+    <!-- Step 4: Team name -->
+    <div class="wizard-step wizard-hidden" id="wzStep4">
+      <label style="display:block;margin-bottom:6px;font-size:0.85rem">Team name</label>
+      <input id="wzTeamName" type="text" style="width:100%" placeholder="e.g. Vermont U9 Purple"
+             value="${escHtml(teamName)}">
+      <p class="wizard-comms-hint" id="wzCommsHint"></p>
+      <div style="margin-top:12px">
+        <button id="wzConfirm" class="btn btn-primary wizard-hidden" type="button" style="width:100%">
+          Confirm name →
+        </button>
+      </div>
+    </div>
+  `);
+
+  // Helper: reveal a step
+  function revealStep(id, counterText) {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('wizard-hidden');
+    const counter = document.getElementById('wzCounter');
+    if (counter && counterText) counter.textContent = counterText;
+  }
+
+  function hideStepsFrom(fromId) {
+    const ids = ['wzStep2', 'wzStep3', 'wzStep4'];
+    const idx = ids.indexOf(fromId);
+    if (idx >= 0) ids.slice(idx).forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('wizard-hidden');
+    });
+    const confirm = document.getElementById('wzConfirm');
+    if (confirm) confirm.classList.add('wizard-hidden');
+  }
+
+  function updateCommsHint() {
+    const hint = document.getElementById('wzCommsHint');
+    if (!hint) return;
+    const name = document.getElementById('wzTeamName')?.value?.trim() || '';
+    const club = selectedClub?.name || '(Club)';
+    const age  = selectedGrade?.age_group || '(Age)';
+    hint.textContent = name
+      ? `Your comms will say: "${club} ${age} ${name}"`
+      : '';
+  }
+
+  // Restore state from draft
+  if (selectedClub) {
+    revealStep('wzStep2', '2 / 4');
+    if (selectedGrade) {
+      const hint = document.getElementById('wzDayHint');
+      if (hint) hint.textContent = selectedGrade.day ? `${selectedGrade.day} games` : '';
+      revealStep('wzStep3', '3 / 4');
+      if (playerCount && roster) {
+        revealStep('wzStep4', '4 / 4');
+        updateCommsHint();
+        if (teamName) {
+          const confirm = document.getElementById('wzConfirm');
+          if (confirm) confirm.classList.remove('wizard-hidden');
+        }
+      }
+    }
+  }
+
+  // Wire chrome
+  function backHandler() {
+    if (document.getElementById('wzStep4') && !document.getElementById('wzStep4').classList.contains('wizard-hidden')) {
+      hideStepsFrom('wzStep4');
+      setWizardChrome({ showBack: true, onBack: backHandler });
+      document.getElementById('wzCounter').textContent = '3 / 4';
+    } else if (document.getElementById('wzStep3') && !document.getElementById('wzStep3').classList.contains('wizard-hidden')) {
+      hideStepsFrom('wzStep3');
+      setWizardChrome({ showBack: true, onBack: backHandler });
+      document.getElementById('wzCounter').textContent = '2 / 4';
+    } else if (document.getElementById('wzStep2') && !document.getElementById('wzStep2').classList.contains('wizard-hidden')) {
+      hideStepsFrom('wzStep2');
+      setWizardChrome({ showBack: false, onBack: null });
+      document.getElementById('wzCounter').textContent = '1 / 4';
+    }
+  }
+  setWizardChrome({ showBack: !!selectedClub, onBack: backHandler });
+
+  // ── Step 1: Club selection
+  document.getElementById('wzClub').addEventListener('change', (e) => {
+    const clubId = e.target.value;
+    selectedClub = clubs.find(c => String(c.club_id) === clubId) || null;
+    selectedGrade = null; roster = null; playerCount = null; teamName = '';
+    hideStepsFrom('wzStep2');
+    if (selectedClub) {
+      revealStep('wzStep2', '2 / 4');
+      setWizardChrome({ showBack: true, onBack: backHandler });
+      saveDraft({ selectedClub, selectedGrade, playerCount, roster, teamName });
+    }
+  });
+
+  // ── Import link
+  document.getElementById('wzImportLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    showImport(onComplete);
+    setWizardChrome({ showBack: true, onBack: () => showStartFresh(refData, loadDraft(), onComplete) });
+  });
+
+  // ── Step 2: Grade selection
+  document.getElementById('wzGrade').addEventListener('change', (e) => {
+    const gradeId = e.target.value;
+    selectedGrade = grades.find(g => String(g.grade_id) === gradeId) || null;
+    roster = null; playerCount = null; teamName = '';
+    hideStepsFrom('wzStep3');
+    const hint = document.getElementById('wzDayHint');
+    if (hint) hint.textContent = selectedGrade?.day ? `${selectedGrade.day} games` : '';
+    if (selectedGrade) {
+      revealStep('wzStep3', '3 / 4');
+      saveDraft({ selectedClub, selectedGrade, playerCount, roster, teamName });
+    }
+  });
+
+  // ── Step 3: Player count
+  function onPlayerCountInput() {
+    const val = parseInt(document.getElementById('wzPlayerCount')?.value, 10);
+    if (!val || val < 1 || val > 30) return;
+    playerCount = val;
+    roster = buildRoster(randomNames, playerCount);
+    teamName = '';
+    const confirm = document.getElementById('wzConfirm');
+    if (confirm) confirm.classList.add('wizard-hidden');
+    revealStep('wzStep4', '4 / 4');
+    updateCommsHint();
+    saveDraft({ selectedClub, selectedGrade, playerCount, roster, teamName });
+  }
+  document.getElementById('wzPlayerCount').addEventListener('change', onPlayerCountInput);
+  document.getElementById('wzPlayerCount').addEventListener('blur', onPlayerCountInput);
+
+  // ── Step 4: Team name
+  document.getElementById('wzTeamName').addEventListener('input', () => {
+    teamName = document.getElementById('wzTeamName')?.value?.trim() || '';
+    updateCommsHint();
+    const confirm = document.getElementById('wzConfirm');
+    if (confirm) {
+      if (teamName.length >= 1) confirm.classList.remove('wizard-hidden');
+      else confirm.classList.add('wizard-hidden');
+    }
+    if (teamName) saveDraft({ selectedClub, selectedGrade, playerCount, roster, teamName });
+  });
+
+  // ── Confirm name → completion screen
+  document.getElementById('wzConfirm').addEventListener('click', () => {
+    teamName = document.getElementById('wzTeamName')?.value?.trim() || '';
+    if (!teamName) return;
+
+    const clubName = (selectedClub?.name || '').toLowerCase();
+    const seededRounds = (roundsTemplate || [])
+      .filter(r => r.grade === selectedGrade?.grade_name)
+      .map(r => ({
+        round:              r.round,
+        date:               r.date,
+        time:               r.time || '08:45 AM',
+        home_away:          clubName && r.team1?.toLowerCase().includes(clubName) ? 'h'
+                          : clubName && r.team2?.toLowerCase().includes(clubName) ? 'a'
+                          : '',
+        opposition_club_id: '',
+        location_id:        '',
+        extra_notes:        '',
+      }));
+
+    const state = {
+      user_team: {
+        club_id:    selectedClub.club_id,
+        club_name:  selectedClub.name,
+        team_name:  teamName,
+        age_group:  selectedGrade.age_group,
+        gender:     selectedGrade.gender,
+        grade_id:   selectedGrade.grade_id,
+        grade_name: selectedGrade.grade_name,
+        roster,
+      },
+      round_summary: { rounds: seededRounds },
+      reference_data: {
+        clubs,
+        locations: [],
+        jobs: [],
+        players: roster.map(r => ({ jumper: r.jumper, player_name: r.name })),
+        volunteers: roster.map(r => ({
+          jumper:        r.jumper,
+          volunteer_name: r.name,
+          preferred_job: '',
+          avoid_jobs:    '',
+        })),
+        splits: [],
+      },
+    };
+
+    saveDraft({ selectedClub, selectedGrade, playerCount, roster, teamName });
+    setWizardChrome({ showBack: true, onBack: () => showStartFresh(refData, loadDraft(), onComplete) });
+    showCompletionScreen(state, onComplete);
+  });
+}
+
+// ── Resume / start-over landing ───────────────────────────────────────────
+
+async function showResumeLanding(refData, draft, onComplete) {
+  const club = draft.selectedClub?.name || '?';
+  const grade = draft.selectedGrade?.grade_name || '';
+  const teamName = draft.teamName || '';
+  const summary = [club, grade, teamName].filter(Boolean).join(' · ');
+
+  setWizardContent(`
+    <h2 style="margin-bottom:0.75rem">Welcome back</h2>
+    <p style="font-size:0.85rem;color:var(--muted,#888);margin-bottom:1.25rem">${escHtml(summary)}</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button id="wzContinue" class="btn btn-primary" type="button" style="flex:1;min-width:140px">
+        Continue →
+      </button>
+      <button id="wzNewSetup" class="btn" type="button" style="flex:1;min-width:140px">
+        Start fresh
+      </button>
+    </div>
+  `);
+  removeWizardChrome();
+
+  document.getElementById('wzContinue').addEventListener('click', () => {
+    showStartFresh(refData, draft, onComplete);
+  });
+  document.getElementById('wzNewSetup').addEventListener('click', () => {
+    clearDraft();
+    showStartFresh(refData, null, onComplete);
+  });
 }
 
 // ── Public API ────────────────────────────────────────────────────────────
 
 export async function showWizard(onComplete) {
   showWizardEl();
-  await showLanding(onComplete);
+
+  // Load all reference data concurrently
+  const [clubs, grades, randomNames, roundsTemplate] = await Promise.all([
+    fetchJson('./data/clubs.json'),
+    fetchJson('./data/grades.json'),
+    fetchJson('./data/random-names.json'),
+    fetchJson('./data/rounds-template.json'),
+  ]);
+  const refData = { clubs, grades, randomNames, roundsTemplate };
+
+  let restartListener = null;
+
+  function start(draft) {
+    if (restartListener) {
+      document.removeEventListener('wizard-restart', restartListener);
+    }
+    restartListener = () => {
+      clearDraft();
+      showStartFresh(refData, null, onComplete);
+    };
+    document.addEventListener('wizard-restart', restartListener, { once: true });
+
+    const existingDraft = loadDraft();
+    if (existingDraft && existingDraft.selectedClub) {
+      showResumeLanding(refData, existingDraft, onComplete);
+    } else {
+      showStartFresh(refData, null, onComplete);
+    }
+  }
+
+  start(loadDraft());
 }

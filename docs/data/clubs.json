@@ -1,0 +1,150 @@
+[
+  {
+    "club_id": 1,
+    "name": "Bayswater"
+  },
+  {
+    "club_id": 2,
+    "name": "Beaconsfield"
+  },
+  {
+    "club_id": 3,
+    "name": "Blackburn"
+  },
+  {
+    "club_id": 4,
+    "name": "Boronia"
+  },
+  {
+    "club_id": 5,
+    "name": "Chirnside Park"
+  },
+  {
+    "club_id": 6,
+    "name": "Coldstream"
+  },
+  {
+    "club_id": 7,
+    "name": "Croydon"
+  },
+  {
+    "club_id": 8,
+    "name": "Donvale"
+  },
+  {
+    "club_id": 9,
+    "name": "East Burwood"
+  },
+  {
+    "club_id": 10,
+    "name": "East Ringwood"
+  },
+  {
+    "club_id": 11,
+    "name": "Endeavour Hills"
+  },
+  {
+    "club_id": 12,
+    "name": "Fairpark"
+  },
+  {
+    "club_id": 13,
+    "name": "Ferntree Gully"
+  },
+  {
+    "club_id": 14,
+    "name": "Glen Waverley Rovers"
+  },
+  {
+    "club_id": 15,
+    "name": "Heathmont"
+  },
+  {
+    "club_id": 16,
+    "name": "Kilsyth"
+  },
+  {
+    "club_id": 17,
+    "name": "Knox"
+  },
+  {
+    "club_id": 18,
+    "name": "Lilydale"
+  },
+  {
+    "club_id": 19,
+    "name": "Lysterfield"
+  },
+  {
+    "club_id": 20,
+    "name": "Mitcham"
+  },
+  {
+    "club_id": 21,
+    "name": "Montrose"
+  },
+  {
+    "club_id": 22,
+    "name": "Mooroolbark"
+  },
+  {
+    "club_id": 23,
+    "name": "Noble Park"
+  },
+  {
+    "club_id": 24,
+    "name": "North Ringwood"
+  },
+  {
+    "club_id": 25,
+    "name": "Norwood"
+  },
+  {
+    "club_id": 26,
+    "name": "Oakleigh District"
+  },
+  {
+    "club_id": 27,
+    "name": "Ringwood"
+  },
+  {
+    "club_id": 28,
+    "name": "Rowville"
+  },
+  {
+    "club_id": 29,
+    "name": "Rowville Knights"
+  },
+  {
+    "club_id": 30,
+    "name": "Scoresby"
+  },
+  {
+    "club_id": 31,
+    "name": "South Belgrave"
+  },
+  {
+    "club_id": 32,
+    "name": "South Croydon"
+  },
+  {
+    "club_id": 33,
+    "name": "The Basin"
+  },
+  {
+    "club_id": 34,
+    "name": "Upper Ferntree Gully"
+  },
+  {
+    "club_id": 35,
+    "name": "Vermont"
+  },
+  {
+    "club_id": 36,
+    "name": "Wantirna South"
+  },
+  {
+    "club_id": 37,
+    "name": "Waverley Blues"
+  }
+]

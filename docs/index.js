@@ -3035,16 +3035,18 @@ const DATA_SCHEMAS = {
   rounds: {
     pk: 'round',
     label: 'Round',
-    columns: ['round','home_away','date','location_id','opposition_club_id','time','extra_notes'],
+    columns: ['round','home_away','date','time','opposition_club_id','location_id','extra_notes'],
     fields: [
-      { name: 'round',              label: 'Round #',    type: 'text',   required: true  },
-      { name: 'home_away',          label: 'Home/Away',  type: 'select', required: true,
-        options: ['h','a','B']                                                            },
-      { name: 'date',               label: 'Date',       type: 'date',   required: true  },
-      { name: 'location_id',        label: 'Location ID',type: 'text',   required: false },
-      { name: 'opposition_club_id', label: 'Club ID',    type: 'text',   required: false },
-      { name: 'time',               label: 'Time',       type: 'text',   required: false },
-      { name: 'extra_notes',        label: 'Notes',      type: 'text',   required: false },
+      { name: 'round',              label: 'Round #',         type: 'text',       required: true  },
+      { name: 'home_away',          label: 'Home/Away',       type: 'select',     required: true,
+        options: ['h','a','B']                                                                     },
+      { name: 'date',               label: 'Date',            type: 'date',       required: true  },
+      { name: 'time',               label: 'Time',            type: 'text',       required: false },
+      { name: 'opposition_club_id', label: 'Opposition Club', type: 'select-ref',
+        refType: 'clubs', refPk: 'club_id', refLabel: 'name', required: false                     },
+      { name: 'location_id',        label: 'Location',        type: 'select-ref',
+        refType: 'locations', refPk: 'location_id', refLabel: 'display_name', required: false     },
+      { name: 'extra_notes',        label: 'Notes',           type: 'text',       required: false },
     ],
   },
   clubs: {
@@ -3060,8 +3062,9 @@ const DATA_SCHEMAS = {
     label: 'Location',
     columns: ['location_id','club_id','display_name'],
     fields: [
-      { name: 'display_name', label: 'Display name', type: 'text', required: true  },
-      { name: 'club_id',      label: 'Club ID',      type: 'text', required: false },
+      { name: 'display_name', label: 'Display name', type: 'text',       required: true  },
+      { name: 'club_id',      label: 'Home club',    type: 'select-ref',
+        refType: 'clubs', refPk: 'club_id', refLabel: 'name',            required: false },
     ],
   },
   jobs: {
@@ -3069,10 +3072,10 @@ const DATA_SCHEMAS = {
     label: 'Job',
     columns: ['job_name','volunteers_required','subteam','home_only'],
     fields: [
-      { name: 'job_name',            label: 'Job name',    type: 'text', required: true  },
-      { name: 'volunteers_required', label: 'Slots',       type: 'text', required: false },
-      { name: 'subteam',             label: 'Subteam',     type: 'text', required: false },
-      { name: 'home_only',           label: 'Home only',   type: 'text', required: false },
+      { name: 'job_name',            label: 'Job name',  type: 'text', required: true  },
+      { name: 'volunteers_required', label: 'Slots',     type: 'text', required: false },
+      { name: 'subteam',             label: 'Subteam',   type: 'text', required: false },
+      { name: 'home_only',           label: 'Home only', type: 'text', required: false },
     ],
   },
   players: {
@@ -3086,14 +3089,13 @@ const DATA_SCHEMAS = {
   },
   volunteers: {
     pk: 'jumper',
-    label: 'Volunteer',
-    columns: ['jumper','volunteer_name','eligible','preferred_job','avoid_jobs'],
+    label: 'Volunteer Prefs',
+    // volunteer_name is display-only (derived from players) — not in fields
+    columns: ['jumper','volunteer_name','preferred_job','avoid_jobs'],
     fields: [
-      { name: 'jumper',          label: 'Jumper #',     type: 'text', required: true  },
-      { name: 'volunteer_name',  label: 'Name',         type: 'text', required: true  },
-      { name: 'eligible',        label: 'Eligible',     type: 'text', required: false },
-      { name: 'preferred_job',   label: 'Prefers',      type: 'text', required: false },
-      { name: 'avoid_jobs',      label: 'Avoids',       type: 'text', required: false },
+      { name: 'jumper',        label: 'Jumper #', type: 'text', required: true  },
+      { name: 'preferred_job', label: 'Prefers',  type: 'text', required: false },
+      { name: 'avoid_jobs',    label: 'Avoids',   type: 'text', required: false },
     ],
   },
 };
@@ -3103,17 +3105,35 @@ async function fetchDataRecords(type) {
   if (!isAdmin()) {
     // USER_SPA: read from the store — no server call
     const data = getData();
-    if (type === 'volunteers') {
-      // volunteers live in data.volunteers.eligible, not reference_data
-      _dataRecords[type] = (data?.volunteers?.eligible || []).map(v => ({
-        jumper:         String(v.jumper),
-        volunteer_name: v.volunteer || '',
-        eligible:       'true',
-        preferred_job:  (v.preferred_jobs || []).join(', '),
-        avoid_jobs:     (v.avoid_jobs     || []).join(', '),
-      }));
+    if (type === 'rounds') {
+      // rounds live in round_summary.rounds, not reference_data
+      // deepClone to get a mutable copy (store data is deepFreeze'd)
+      _dataRecords[type] = deepClone(data?.round_summary?.rounds || []);
+    } else if (type === 'volunteers') {
+      // Volunteers are players. Name is derived from players by jumper (read-only).
+      // Post-save data lives in reference_data.volunteers; initial load falls back to
+      // volunteers.eligible (populated by the wizard).
+      const players = _dataRecords['players'] || (data?.reference_data?.players || []);
+      const nameByJumper = Object.fromEntries(
+        players.map(p => [String(p.jumper), p.player_name])
+      );
+      const fromRef = (data?.reference_data?.volunteers || []);
+      if (fromRef.length > 0) {
+        _dataRecords[type] = fromRef.map(v => ({
+          ...v,
+          volunteer_name: nameByJumper[String(v.jumper)] || v.volunteer_name || '',
+        }));
+      } else {
+        _dataRecords[type] = (data?.volunteers?.eligible || []).map(v => ({
+          jumper:         String(v.jumper),
+          volunteer_name: nameByJumper[String(v.jumper)] || v.volunteer || '',
+          preferred_job:  (v.preferred_jobs || []).join(', '),
+          avoid_jobs:     (v.avoid_jobs     || []).join(', '),
+        }));
+      }
     } else {
-      _dataRecords[type] = (data?.reference_data || {})[type] || [];
+      // deepClone to get a mutable copy (store data is deepFreeze'd)
+      _dataRecords[type] = deepClone((data?.reference_data || {})[type] || []);
     }
     return _dataRecords[type];
   }
@@ -3208,7 +3228,7 @@ function switchDataSubpanel(type) {
 }
 
 // Open add/edit dialog
-function openDataDialog(type, idEncoded = null) {
+async function openDataDialog(type, idEncoded = null) {
   const schema = DATA_SCHEMAS[type];
   const isEdit = idEncoded !== null;
   const id = idEncoded ? decodeURIComponent(idEncoded) : null;
@@ -3216,25 +3236,53 @@ function openDataDialog(type, idEncoded = null) {
     ? (_dataRecords[type] || []).find(r => String(r[schema.pk]) === id)
     : null;
 
+  // Pre-load any ref tables needed by select-ref fields
+  const refTypes = [...new Set(schema.fields.filter(f => f.type === 'select-ref').map(f => f.refType))];
+  await Promise.all(refTypes.map(rt => {
+    if (!_dataRecords[rt]) return fetchDataRecords(rt);
+    return Promise.resolve();
+  }));
+
   // Remove any existing dialog
   const old = document.getElementById('dataDialog');
   if (old) old.remove();
 
+  // For volunteers: show player name as a read-only label above the form
+  let volunteerLabel = '';
+  if (type === 'volunteers' && existing) {
+    volunteerLabel = `<p class="data-field-readonly"><strong>Player:</strong> ${escHtml(existing.volunteer_name || '(unknown)')}</p>`;
+  }
+
   const fields = schema.fields.map(f => {
-    const val = existing ? escHtml(String(existing[f.name] ?? '')) : '';
+    const val = existing ? String(existing[f.name] ?? '') : '';
     const req = f.required ? 'required' : '';
     if (f.type === 'select') {
       const opts = f.options.map(o =>
-        `<option value="${o}" ${existing && existing[f.name] === o ? 'selected' : ''}>${o}</option>`
+        `<option value="${o}" ${existing && existing[f.name] === o ? 'selected' : ''}>${escHtml(o)}</option>`
       ).join('');
       return `<div class="data-field">
         <label for="df-${f.name}">${escHtml(f.label)}${f.required ? ' *' : ''}</label>
         <select id="df-${f.name}" name="${f.name}" ${req}>${opts}</select>
       </div>`;
     }
+    if (f.type === 'select-ref') {
+      const refRecords = _dataRecords[f.refType] || [];
+      const noneOpt = `<option value="">— none —</option>`;
+      const opts = refRecords.map(r => {
+        const pkVal = String(r[f.refPk] ?? '');
+        const label = escHtml(String(r[f.refLabel] ?? pkVal));
+        const sel = val === pkVal ? 'selected' : '';
+        return `<option value="${escHtml(pkVal)}" ${sel}>${label}</option>`;
+      }).join('');
+      return `<div class="data-field">
+        <label for="df-${f.name}">${escHtml(f.label)}${f.required ? ' *' : ''}</label>
+        <select id="df-${f.name}" name="${f.name}" ${req}>${noneOpt}${opts}</select>
+        <span class="data-field-error hidden" id="dfe-${f.name}"></span>
+      </div>`;
+    }
     return `<div class="data-field">
       <label for="df-${f.name}">${escHtml(f.label)}${f.required ? ' *' : ''}</label>
-      <input id="df-${f.name}" name="${f.name}" type="${f.type}" value="${val}" ${req}
+      <input id="df-${f.name}" name="${f.name}" type="${f.type}" value="${escHtml(val)}" ${req}
              placeholder="${escHtml(f.label)}">
       <span class="data-field-error hidden" id="dfe-${f.name}"></span>
     </div>`;
@@ -3245,6 +3293,7 @@ function openDataDialog(type, idEncoded = null) {
   dlg.innerHTML = `
     <form id="dataDialogForm">
       <h3>${isEdit ? 'Edit' : 'Add'} ${escHtml(schema.label)}</h3>
+      ${volunteerLabel}
       ${fields}
       <div class="data-dialog-error hidden" id="dataDialogError"></div>
       <div class="data-dialog-actions">
@@ -3291,6 +3340,18 @@ async function submitDataForm(type, isEdit, id, dlg, schema) {
   if (!isAdmin()) {
     // USER_SPA: persist the record to the in-memory cache and the store
     const pk = schema.pk;
+
+    // Auto-assign PKs for new records that need numeric IDs
+    if (!isEdit) {
+      if (type === 'clubs') {
+        const maxId = Math.max(0, ...(_dataRecords['clubs'] || []).map(r => Number(r.club_id) || 0));
+        body.club_id = String(maxId + 1);
+      } else if (type === 'locations') {
+        const maxId = Math.max(0, ...(_dataRecords['locations'] || []).map(r => Number(r.location_id) || 0));
+        body.location_id = String(maxId + 1);
+      }
+    }
+
     if (isEdit) {
       const idx = (_dataRecords[type] || []).findIndex(r => String(r[pk]) === id);
       if (idx >= 0) _dataRecords[type][idx] = { ..._dataRecords[type][idx], ...body };
@@ -3298,7 +3359,14 @@ async function submitDataForm(type, isEdit, id, dlg, schema) {
       if (!_dataRecords[type]) _dataRecords[type] = [];
       _dataRecords[type].push(body);
     }
-    if (type !== 'volunteers') {
+
+    if (type === 'rounds') {
+      // rounds live in round_summary.rounds — replace the full array (handles both edit + add)
+      const currentData = getData();
+      const roundSummary = { ...(currentData?.round_summary || {}), rounds: _dataRecords['rounds'] };
+      dispatch({ type: 'apply-server-fragments', payload: { fragments: { round_summary: roundSummary } } });
+    } else {
+      // All other types (including volunteers) write to reference_data via update-reference-data
       dispatch({ type: 'update-reference-data', payload: { key: type, records: _dataRecords[type] } });
     }
     dlg.close();
