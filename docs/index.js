@@ -1,14 +1,28 @@
-window.__APP_VERSION = "0.31.27";
+window.__APP_VERSION = "0.31.43";
 'use strict';
 
+// ── Module imports (CLM-004/005/006: single source of truth) ──────────────
+// index.js is loaded as an ES module (<script type="module"> in index.html).
+// The pure state logic lives in store-reducer.mjs; the view-model derivation in
+// store-selectors.mjs; the HTML-escape utility in utils.mjs. The wrappers below
+// inject getState() so this file's call sites stay unchanged.
+import { escHtml, copyToastMessage } from './utils.mjs';
+import { reduceState, initialUiState, buildStoreState, deepClone, deepFreeze } from './store-reducer.mjs';
+import * as Sel from './store-selectors.mjs';
+import { isRoundLocked, nextLockStatus, roundStatusPill } from './round-status.mjs';
+import {
+  homeGroundsForClub, firstHomeGroundName,
+  encodeRowRef, resolveRecordForEdit,
+  normalizeJobNames, serializeJobNames,
+} from './data-records.mjs';
 
 // ── Allocator global (loaded in index.html as ES module) ──────────────────
 // Read lazily at call time — the ES module may not have executed yet at load.
 function _getAllocator() { return window.__allocator; }
 
 // ── Module-level UI state (not in store — render-cycle local) ─────────────
-let _balanceSort = 'most-loaded';          // US-07: Balance panel sort
-const _expandedVols = new Set();           // US-03: Volunteer timeline expand/collapse
+// NOTE (CLM-006): _balanceSort and _expandedVols now live in SPA_STORE.ui
+// (ui.balanceSortKey, ui.expandedVolJumpers) so they survive an IDB reload.
 let _renderingSettings = false;            // Guard: prevents saveUserTeam() during DOM rebuild
 let _mobileNavOpen = false;                // iPhone drawer state
 let _mobileNavHintSeen = false;            // One-time affordance state
@@ -21,309 +35,18 @@ let _idb = null;                           // Reference to idb module when avail
 let _idbAvailable = false;                 // Whether IndexedDB is available
 
 // ── Store foundation ──────────────────────────────────────────────────────
-const SPA_STORE = createStore();
-
-function deepClone(value) {
-  return value == null ? value : JSON.parse(JSON.stringify(value));
-}
-
-function deepFreeze(value) {
-  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
-  Object.freeze(value);
-  Object.getOwnPropertyNames(value).forEach(key => {
-    deepFreeze(value[key]);
-  });
-  return value;
-}
-
-function mergeReportModel(serverSnapshot, clientOverrides) {
-  if (!serverSnapshot) return null;
-  const merged = deepClone(serverSnapshot);
-  Object.entries(clientOverrides || {}).forEach(([key, value]) => {
-    if (value !== undefined) merged[key] = deepClone(value);
-  });
-  return deepFreeze(merged);
-}
-
-function initialUiState() {
-  return {
-    activePanel: 'dashboard',
-    loadedFilename: null,
-    selectedRound: null,
-    roundDetailOpen: false,
-    teamSplitsRound: null,
-  };
-}
-
-function buildStoreState(serverSnapshot, clientOverrides, ui) {
-  const overrides = clientOverrides || {};
-  const data = mergeReportModel(serverSnapshot, overrides);
-  return {
-    serverSnapshot,
-    clientOverrides: overrides,
-    ui: normalizeUiState(ui, data),
-    data,
-  };
-}
-
-function normalizeUiState(ui, data) {
-  const nextUi = {
-    ...initialUiState(),
-    ...(ui || {}),
-  };
-  const rounds = data?.round_summary?.rounds || [];
-  const selectedRound = nextUi.selectedRound == null
-    ? null
-    : String(nextUi.selectedRound);
-  const hasSelectedRound = selectedRound != null
-    && rounds.some(round => String(round.round) === selectedRound);
-  const roundDetailOpen = nextUi.activePanel === 'rounds'
-    && !!nextUi.roundDetailOpen
-    && hasSelectedRound;
-  return {
-    ...nextUi,
-    selectedRound: hasSelectedRound ? selectedRound : null,
-    roundDetailOpen,
-  };
-}
-
-function replaceStoreData(currentState, nextReport, ui = currentState.ui) {
-  if (!nextReport) return currentState;
-  return buildStoreState(deepFreeze(deepClone(nextReport)), {}, ui);
-}
-
-function updateSeasonOverviewCounts(seasonOverview, rounds) {
-  if (!seasonOverview) return seasonOverview;
-  const confirmedRounds = rounds.filter(round => round.status === 'confirmed').length;
-  return {
-    ...deepClone(seasonOverview),
-    confirmed_rounds: confirmedRounds,
-    scheduled_rounds: Math.max(rounds.length - confirmedRounds, 0),
-  };
-}
-
-function updateMatrixRoundStatuses(matrix, rounds) {
-  if (!matrix) return matrix;
-  const statusByRound = Object.fromEntries(
-    rounds.map(round => [String(round.round), round.status])
-  );
-  return {
-    ...deepClone(matrix),
-    rounds: (matrix.rounds || []).map(round => {
-      const nextStatus = statusByRound[String(round.round)];
-      if (nextStatus === undefined) return deepClone(round);
-      return {
-        ...deepClone(round),
-        status: nextStatus,
-      };
-    }),
-  };
-}
-
+// The pure reducer and immutability helpers live in store-reducer.mjs.
+// createStore holds the single mutable `state` reference and persistence is
+// wired in the module-level dispatch() below.
 function createStore() {
   let state = buildStoreState(null, {}, initialUiState());
-
-  function getState() {
-    return state;
-  }
-
-  function getData() {
-    return state.data;
-  }
-
-  function dispatch(action) {
-    state = reduceState(state, action);
-    return state;
-  }
-
-  function reduceState(currentState, action) {
-    switch (action.type) {
-      case 'load-report': {
-        const report = deepClone(action.payload.report);
-        return replaceStoreData(currentState, report, {
-          ...initialUiState(),
-          loadedFilename: action.payload.filename,
-        });
-      }
-      case 'apply-server-fragments': {
-        if (!currentState.data) return currentState;
-        const nextReport = deepClone(currentState.data);
-        Object.entries(action.payload.fragments || {}).forEach(([key, value]) => {
-          if (value !== undefined) nextReport[key] = deepClone(value);
-        });
-        return replaceStoreData(currentState, nextReport, currentState.ui);
-      }
-      case 'replace-server-report': {
-        return replaceStoreData(currentState, action.payload.report, currentState.ui);
-      }
-      case 'set-active-panel':
-        return buildStoreState(currentState.serverSnapshot, currentState.clientOverrides, {
-          ...currentState.ui,
-          activePanel: action.payload.panel,
-          selectedRound: action.payload.panel === 'rounds' ? currentState.ui.selectedRound : null,
-          roundDetailOpen: action.payload.panel === 'rounds' ? currentState.ui.roundDetailOpen : false,
-        });
-      case 'set-round-detail':
-        return buildStoreState(currentState.serverSnapshot, currentState.clientOverrides, {
-          ...currentState.ui,
-          activePanel: 'rounds',
-          selectedRound: action.payload.roundNum == null ? null : String(action.payload.roundNum),
-          roundDetailOpen: !!action.payload.open,
-        });
-      case 'set-team-splits-round':
-        return buildStoreState(currentState.serverSnapshot, currentState.clientOverrides, {
-          ...currentState.ui,
-          teamSplitsRound: action.payload.roundNum == null ? null : String(action.payload.roundNum),
-        });
-      case 'toggle-round-confirmed': {
-        if (!currentState.data) return currentState;
-        const roundNum = String(action.payload.roundNum);
-        const rounds = ((currentState.data.round_summary && currentState.data.round_summary.rounds) || []).map(round =>
-          String(round.round) === roundNum
-            ? { ...deepClone(round), status: round.status === 'confirmed' ? 'scheduled' : 'confirmed' }
-            : deepClone(round)
-        );
-        const overrides = {
-          ...currentState.clientOverrides,
-          round_summary: { ...deepClone(currentState.data.round_summary), rounds },
-          matrix: updateMatrixRoundStatuses(currentState.data.matrix, rounds),
-          season_overview: updateSeasonOverviewCounts(currentState.data.season_overview, rounds),
-        };
-        return buildStoreState(currentState.serverSnapshot, overrides, currentState.ui);
-      }
-      case 'save-round-edit': {
-        if (!currentState.data) return currentState;
-        const roundNum = String(action.payload.roundNum);
-        const rounds = ((currentState.data.round_summary && currentState.data.round_summary.rounds) || []).map(round =>
-          String(round.round) === roundNum ? { ...deepClone(round), ...deepClone(action.payload.updates) } : deepClone(round)
-        );
-        const refRounds = ((currentState.data.reference_data && currentState.data.reference_data.rounds) || []).map(rr =>
-          String(rr.round) === roundNum ? { ...deepClone(rr), ...deepClone(action.payload.updates) } : deepClone(rr)
-        );
-        const overrides = {
-          ...currentState.clientOverrides,
-          round_summary: { ...deepClone(currentState.data.round_summary), rounds },
-          reference_data: {
-            ...deepClone(currentState.data.reference_data),
-            rounds: refRounds,
-          },
-        };
-        return buildStoreState(currentState.serverSnapshot, overrides, currentState.ui);
-      }
-      case 'set-user-team': {
-        const nextUserTeam = {
-          ...deepClone(currentState.data?.user_team || {}),
-          club_id: action.payload.clubId || '',
-          team_name: action.payload.teamName || '',
-        };
-        return buildStoreState(currentState.serverSnapshot, {
-          ...currentState.clientOverrides,
-          user_team: nextUserTeam,
-        }, currentState.ui);
-      }
-      case 'set-ui-preference': {
-        const prefs = deepClone(currentState.data?.ui_preferences || {});
-        prefs[action.payload.key] = action.payload.value;
-        return buildStoreState(currentState.serverSnapshot, {
-          ...currentState.clientOverrides,
-          ui_preferences: prefs,
-        }, currentState.ui);
-      }
-      case 'set-split': {
-        const { round, jumper, subteam } = action.payload;
-        // Clone the full merged reference_data to preserve players, jobs, etc.
-        const refData = deepClone((currentState.data && currentState.data.reference_data) || {});
-        const existingSplits = refData.splits || [];
-        const idx = existingSplits.findIndex(
-          s => String(s.round) === String(round) && String(s.jumper) === String(jumper)
-        );
-        if (idx >= 0) existingSplits[idx] = { ...existingSplits[idx], subteam };
-        else existingSplits.push({ round: String(round), jumper: String(jumper), subteam });
-        refData.splits = existingSplits;
-        return buildStoreState(currentState.serverSnapshot, {
-          ...currentState.clientOverrides,
-          reference_data: refData,
-        }, currentState.ui);
-      }
-      case 'toggle-player-absent': {
-        if (!currentState.data) return currentState;
-        const { round: absentRound, jumper: absentJumper } = action.payload;
-        const refData = deepClone((currentState.data && currentState.data.reference_data) || {});
-        const absences = refData.absences || [];
-        const matchAbsence = a =>
-          String(a.round) === String(absentRound) && String(a.jumper) === String(absentJumper);
-        refData.absences = absences.some(matchAbsence)
-          ? absences.filter(a => !matchAbsence(a))
-          : [...absences, { round: String(absentRound), jumper: String(absentJumper) }];
-        return buildStoreState(currentState.serverSnapshot, {
-          ...currentState.clientOverrides,
-          reference_data: refData,
-        }, currentState.ui);
-      }
-      case 'update-reference-data': {
-        if (!currentState.data) return currentState;
-        const { key: refKey, records: refRecords } = action.payload;
-        const refData = deepClone(currentState.data?.reference_data || {});
-        refData[refKey] = deepClone(refRecords);
-        return buildStoreState(currentState.serverSnapshot, {
-          ...currentState.clientOverrides,
-          reference_data: refData,
-        }, currentState.ui);
-      }
-      case 'swap-volunteer': {
-        if (!currentState.data) return currentState;
-        const { roundNum: swapRound, job: swapJob, subteam: swapSubteam, slotIndex: swapSlot,
-                newVolunteer, newJumper } = action.payload;
-        const swapRounds = ((currentState.data.round_summary && currentState.data.round_summary.rounds) || [])
-          .map(round => {
-            if (String(round.round) !== String(swapRound)) return deepClone(round);
-            const entries = (round.entries || []).map(e => {
-              if (e.job === swapJob
-                && (e.subteam || 'shared') === swapSubteam
-                && (e.slot_index ?? 0) === swapSlot) {
-                return { ...deepClone(e), jumper: String(newJumper || ''), slot_status: 'manual' };
-              }
-              return deepClone(e);
-            });
-            return { ...deepClone(round), entries };
-          });
-        return buildStoreState(currentState.serverSnapshot, {
-          ...currentState.clientOverrides,
-          round_summary: { ...deepClone(currentState.data.round_summary), rounds: swapRounds },
-        }, currentState.ui);
-      }
-      case 'unset-volunteer': {
-        if (!currentState.data) return currentState;
-        const { roundNum: unsetRound, job: unsetJob, subteam: unsetSubteam, slotIndex: unsetSlot } = action.payload;
-        // Always clear to unfilled — never restore from serverSnapshot.
-        // The server snapshot may itself have slot_status:'manual' (previously-saved
-        // session), so restoring from it would leave the M badge in place and cause
-        // reallocate to re-preserve the same assignment. Clearing to unfilled removes
-        // the entry from the manual-preservation set so the next reallocate fills it
-        // automatically.
-        const unsetRounds = ((currentState.data.round_summary && currentState.data.round_summary.rounds) || [])
-          .map(round => {
-            if (String(round.round) !== String(unsetRound)) return deepClone(round);
-            const entries = (round.entries || []).map(e => {
-              if (e.job === unsetJob && (e.subteam || 'shared') === unsetSubteam && (e.slot_index ?? 0) === unsetSlot) {
-                return { ...deepClone(e), jumper: '', slot_status: 'unfilled' };
-              }
-              return deepClone(e);
-            });
-            return { ...deepClone(round), entries };
-          });
-        return buildStoreState(currentState.serverSnapshot, {
-          ...currentState.clientOverrides,
-          round_summary: { ...deepClone(currentState.data.round_summary), rounds: unsetRounds },
-        }, currentState.ui);
-      }
-      default:
-        return currentState;
-    }
-  }
-
+  function getState() { return state; }
+  function getData() { return state.data; }
+  function dispatch(action) { state = reduceState(state, action); return state; }
   return { getState, getData, dispatch };
 }
+
+const SPA_STORE = createStore();
 
 function getState() {
   return SPA_STORE.getState();
@@ -369,396 +92,51 @@ function assertConsistency() {
 
 window.__rosterSpa = { getState, getData, dispatch, assertConsistency };
 
-function selectUiState(state = getState()) {
-  return state?.ui || initialUiState();
-}
+// ── Global surface (CLM-008) ───────────────────────────────────────────────
+// index.js is an ES module, so its top-level functions are module-scoped rather
+// than implicit globals. The Playwright suite drives the app through these
+// functions via page.evaluate(), and a few are reachable from markup, so we
+// republish the app's public surface onto window explicitly. (Function
+// declarations are hoisted, so names defined later in the file resolve here.)
+Object.assign(window, {
+  getState, getData, dispatch, assertConsistency,
+  render, switchPanel, restoreSkin,
+  loadFile, showPicker, saveSnapshot, reallocate,
+  openRoundDetail, closeRoundDetail, openEditMode, saveRoundEdit, updateEditLocation,
+  toggleConfirmRound, getRoundByNum,
+  openVolSwap, showVolPopup, saveUserTeam,
+  renderAlerts, renderConstraints, renderFairness, renderVolunteers,
+  buildEmailText, copyToClipboard, fmtDate, showSnapshotToast,
+  selectStoreData, selectRoundByNum, serializeSnapshotModel,
+  selectDashboardViewModel, selectRoundsViewModel, selectRoundDetailViewModel,
+  selectSettingsViewModel,
+});
 
-function selectStoreData(state = getState()) {
-  return state?.data || null;
-}
+// ── Selector wrappers (CLM-005) ───────────────────────────────────────────
+// The view-model logic lives in store-selectors.mjs. These wrappers inject
+// getState() so existing call sites in this file remain unchanged. The module
+// is the single, unit-tested source of truth.
+function selectUiState(state = getState()) { return Sel.selectUiState(state); }
+function selectStoreData(state = getState()) { return Sel.selectStoreData(state); }
+function selectRounds(state = getState()) { return Sel.selectRounds(state); }
+function selectRoundByNum(roundNum, state = getState()) { return Sel.selectRoundByNum(roundNum, state); }
+function selectSelectedRound(state = getState()) { return Sel.selectSelectedRound(state); }
+function selectDashboardViewModel(state = getState()) { return Sel.selectDashboardViewModel(state); }
+function selectMatrixViewModel(state = getState()) { return Sel.selectMatrixViewModel(state); }
+function selectRoundsViewModel(state = getState()) { return Sel.selectRoundsViewModel(state); }
+function selectRoundDetailViewModel(state = getState()) { return Sel.selectRoundDetailViewModel(state); }
+function selectSettingsViewModel(state = getState()) { return Sel.selectSettingsViewModel(state); }
+function selectSidebarViewModel(state = getState()) { return Sel.selectSidebarViewModel(state); }
+function selectFairnessViewModel(state = getState()) { return Sel.selectFairnessViewModel(state); }
+function selectAlertsViewModel(state = getState()) { return Sel.selectAlertsViewModel(state); }
+function selectVolunteersViewModel(filter = '', state = getState()) { return Sel.selectVolunteersViewModel(filter, state); }
+function selectBalanceViewModel(state = getState()) { return Sel.selectBalanceViewModel(state); }
+function selectConstraintsViewModel(state = getState()) { return Sel.selectConstraintsViewModel(state); }
+function selectNavigationViewModel(state = getState()) { return Sel.selectNavigationViewModel(state); }
+function serializeSnapshotModel(state = getState()) { return Sel.serializeSnapshotModel(state); }
 
-function selectRounds(state = getState()) {
-  return selectStoreData(state)?.round_summary?.rounds || [];
-}
-
-function selectRoundByNum(roundNum, state = getState()) {
-  if (roundNum == null) return null;
-  const target = String(roundNum);
-  return selectRounds(state).find(round => String(round.round) === target) || null;
-}
-
-function selectSelectedRound(state = getState()) {
-  const ui = selectUiState(state);
-  if (!ui.roundDetailOpen || ui.selectedRound == null) return null;
-  return selectRoundByNum(ui.selectedRound, state);
-}
-
-function selectDashboardViewModel(state = getState()) {
-  const data = selectStoreData(state);
-  if (!data) return null;
-  const rounds = selectRounds(state);
-  const featureRound = rounds.find(round => round.status !== 'confirmed') || rounds[rounds.length - 1] || null;
-  const totalRounds = rounds.length;
-  const confirmedRounds = rounds.filter(round => round.status === 'confirmed').length;
-  return {
-    rounds,
-    featureRound,
-    totalRounds,
-    confirmedRounds,
-    scheduledRounds: Math.max(totalRounds - confirmedRounds, 0),
-    columns: data.matrix?.columns || [],
-  };
-}
-
-function selectMatrixViewModel(state = getState()) {
-  const data = selectStoreData(state);
-  if (!data) return null;
-  const rounds = selectRounds(state);
-  const roundEntriesLookup = {};
-  rounds.forEach(round => {
-    roundEntriesLookup[String(round.round)] = buildEntriesMap(round.entries || []);
-  });
-  const matrixRoundLookup = {};
-  (data.matrix?.rounds || []).forEach(round => {
-    matrixRoundLookup[String(round.round)] = round;
-  });
-  return {
-    rounds,
-    columns: data.matrix?.columns || [],
-    roundEntriesLookup,
-    matrixRoundLookup,
-  };
-}
-
-function selectRoundsViewModel(state = getState()) {
-  const rounds = selectRounds(state);
-  return {
-    rounds,
-    roundCount: rounds.length,
-    selectedRound: selectSelectedRound(state),
-  };
-}
-
-function selectRoundDetailViewModel(state = getState()) {
-  const round = selectSelectedRound(state);
-  if (!round) return null;
-  const rounds = selectRounds(state);
-  return {
-    round,
-    rounds,
-    totalRounds: rounds.length,
-  };
-}
-
-function selectSettingsViewModel(state = getState()) {
-  const data = selectStoreData(state);
-  if (!data) return null;
-  const ov = data.season_overview || {};
-  const eligibleCount = data.volunteers?.eligible?.length || 0;
-  const ineligibleCount = data.volunteers?.ineligible?.length || 0;
-  return {
-    cards: [
-      { label: 'Players',       value: ov.players },
-      { label: 'Eligible Vols', value: eligibleCount },
-      { label: 'Ineligible',    value: ineligibleCount },
-      { label: 'Rounds',        value: ov.rounds },
-      { label: 'Total Slots',   value: ov.total_season_slots },
-      { label: 'Slots / Round', value: ov.slots_per_round },
-      { label: 'Ideal Assign.', value: Number(ov.ideal_assignments_per_volunteer).toFixed(1) },
-      { label: 'Confirmed',     value: ov.confirmed_rounds, sub: 'rounds locked' },
-      { label: 'Scheduled',     value: ov.scheduled_rounds, sub: 'rounds pending' },
-    ],
-    clubs: data.reference_data?.clubs || [],
-    selectedClubId: data.user_team?.club_id || '',
-    teamName: data.user_team?.team_name || '',
-    printFooter: data.ui_preferences?.print_footer ?? '',
-  };
-}
-
-function selectSidebarViewModel(state = getState()) {
-  const data = selectStoreData(state);
-  if (!data) return null;
-  const rounds = selectRounds(state);
-  const eligible = data.volunteers?.eligible || [];
-  const ineligible = data.volunteers?.ineligible || [];
-  const total = eligible.length + ineligible.length;
-  const roster = data.user_team?.roster || [];
-  const teamName = data.user_team?.team_name || 'Volunteer Roster';
-  const playerCount = roster.length;
-  const playerLabel = 'player';
-  const roundCount = rounds.length;
-  const initials = getInitials(teamName);
-  return {
-    teamName,
-    initials,
-    seasonYear: buildSeasonLabel(rounds),
-    eligibleCount: eligible.length,
-    totalCount: total,
-    modeLabel: 'USER MODE',
-    modeIcon: '👤',
-    modeStats: `${playerCount} ${playerLabel}${playerCount !== 1 ? 's' : ''} · ${roundCount} round${roundCount !== 1 ? 's' : ''}`,
-    userAv: initials.slice(0, 2) || 'U',
-    userName: teamName || 'User view',
-    userRole: 'Local data · browser-only',
-  };
-}
-
-function buildSeasonLabel(rounds) {
-  const years = [...new Set(
-    (rounds || [])
-      .map(round => String(round?.date || '').slice(0, 4))
-      .filter(year => /^\d{4}$/.test(year))
-      .sort()
-  )];
-  if (years.length === 0) return '';
-  if (years.length === 1) return `Season ${years[0]}`;
-  return `Season ${years[0]}/${years[years.length - 1].slice(-2)}`;
-}
-
-function computeClientBalance(data) {
-  // Build volunteer list: prefer user_team.roster (USER_SPA), fall back to
-  // volunteers.eligible (ADMIN_SPA). Both must map jumper → display name.
-  const rosterMembers = (data?.user_team?.roster || []).filter(m => m.jumper);
-  const eligibleVols  = (data?.volunteers?.eligible || []).filter(v => v.jumper);
-
-  const volList = rosterMembers.length > 0
-    ? rosterMembers.map(m => ({ jumper: String(m.jumper), name: m.name || String(m.jumper) }))
-    : eligibleVols.map(v => ({ jumper: String(v.jumper), name: v.volunteer || String(v.jumper) }));
-
-  if (volList.length === 0) return null;
-
-  // Count assignments from ALL non-BYE rounds regardless of confirmation status.
-  // Scheduled rounds represent real allocations — omitting them hides the workload.
-  // Track confirmed/scheduled split and assignment chip data for the volunteers panel.
-  const countByJumper = {};
-  const confirmedByJumper = {};
-  const scheduledByJumper = {};
-  const assignmentsByJumper = {};
-  for (const r of (data?.round_summary?.rounds || [])) {
-    if (r.home_away === 'B') continue;
-    const isConfirmed = r.status === 'confirmed';
-    for (const e of (r.entries || [])) {
-      if (e.jumper && e.slot_status !== 'unfilled') {
-        const j = String(e.jumper);
-        countByJumper[j] = (countByJumper[j] || 0) + 1;
-        if (isConfirmed) confirmedByJumper[j] = (confirmedByJumper[j] || 0) + 1;
-        else scheduledByJumper[j] = (scheduledByJumper[j] || 0) + 1;
-        if (!assignmentsByJumper[j]) assignmentsByJumper[j] = [];
-        assignmentsByJumper[j].push({
-          round: String(r.round),
-          job: e.job || '',
-          status: r.status || 'scheduled',
-          consecutive_repeat: false,
-        });
-      }
-    }
-  }
-
-  const entries = volList.map(m => ({
-    volunteer: m.name,
-    jumper: m.jumper,
-    count: countByJumper[m.jumper] || 0,
-    confirmed: confirmedByJumper[m.jumper] || 0,
-    scheduled: scheduledByJumper[m.jumper] || 0,
-    assignments: assignmentsByJumper[m.jumper] || [],
-  }));
-  const total = entries.reduce((sum, e) => sum + e.count, 0);
-  // No actual assignments yet — let stored balance take precedence as a fallback.
-  if (total === 0) return null;
-  const ideal = entries.length > 0 ? total / entries.length : 0;
-  const maxCount = Math.max(...entries.map(e => e.count), 1);
-  return {
-    ideal_assignments_per_volunteer: ideal,
-    entries: entries.map(e => ({
-      ...e,
-      delta: e.count - ideal,
-      fraction_of_max: e.count / maxCount,
-    })),
-  };
-}
-
-function selectFairnessViewModel(state = getState()) {
-  const data = selectStoreData(state);
-  const bal = computeClientBalance(data) || data?.balance;
-  if (!bal || !bal.entries || bal.entries.length === 0) {
-    return {
-      score: '—',
-      summary: '',
-      squares: [],
-    };
-  }
-  const entries = bal.entries;
-  const counts = entries.map(entry => entry.count);
-  const mean = counts.reduce((sum, count) => sum + count, 0) / counts.length;
-  const variance = counts.reduce((sum, count) => sum + Math.pow(count - mean, 2), 0) / counts.length;
-  const sigma = Math.sqrt(variance);
-  const maxCount = Math.max(...counts) || 1;
-  return {
-    score: Math.max(0, Math.min(10, 10 * (1 - sigma / maxCount))).toFixed(1),
-    summary:
-      sigma < 1 ? 'Workload spread evenly across volunteers.'
-      : sigma < 2 ? 'Slight imbalance — review balance tab.'
-      : 'Notable imbalance detected.',
-    squares: entries.map(entry => ({
-      jumper: entry.jumper || getVolJumper(entry.volunteer),
-      volunteer: entry.volunteer || getVolunteerByJumper(entry.jumper),
-      count: entry.count,
-      delta: entry.delta || 0,
-      opacity: 0.5 + (entry.fraction_of_max !== undefined ? entry.fraction_of_max : entry.count / maxCount) * 0.5,
-    })),
-  };
-}
-
-function selectAlertsViewModel(state = getState()) {
-  const data = selectStoreData(state);
-  if (!data) return null;
-  const hardErrors = data.issues?.hard_errors || [];
-  const warnings = data.issues?.warnings || [];
-  const outcome = data.status?.outcome || 'unknown';
-  const isOk = outcome === 'success' || outcome === 'ok';
-  return {
-    hardErrors,
-    warnings,
-    statusClass: isOk ? 'ok' : outcome === 'warning' ? 'warn' : 'err',
-    statusIcon: isOk ? '✓' : outcome === 'warning' ? '⚠' : '✗',
-    statusLabel: isOk ? 'Clean' : outcome === 'warning' ? 'Warnings' : 'Errors',
-  };
-}
-
-function selectVolunteersViewModel(filter = '', state = getState()) {
-  const data = selectStoreData(state);
-  if (!data) return null;
-  let eligible = data.volunteers?.eligible || [];
-  const ineligible = data.volunteers?.ineligible || [];
-
-  // USER_SPA fallback: derive minimal volunteer list from user_team.roster
-  if (eligible.length === 0) {
-    const roster = data.user_team?.roster || [];
-    if (roster.length > 0) {
-      eligible = roster.map(m => ({
-        jumper: String(m.jumper),
-        volunteer: m.name || String(m.jumper),
-        player_name: m.name || String(m.jumper),
-        certifications: [],
-        preferred_jobs: [],
-        avoid_jobs: [],
-        total_assignments: 0,
-        confirmed_assignments: 0,
-        scheduled_assignments: 0,
-        assignments: [],
-      }));
-    }
-  }
-
-  const lower = String(filter || '').toLowerCase();
-  const absences = data.reference_data?.absences || [];
-
-  // Compute live counts from round_summary so both panels agree.
-  // balMap keys are String(jumper) → { count, confirmed, scheduled, assignments }.
-  const bal = computeClientBalance(data) || data.balance;
-  const balMap = Object.fromEntries((bal?.entries || []).map(e => [String(e.jumper), e]));
-
-  return {
-    eligibleCount: eligible.length,
-    ideal: bal ? Number(bal.ideal_assignments_per_volunteer).toFixed(1) : '—',
-    filtered: eligible.filter(volunteer =>
-      (volunteer.volunteer || '').toLowerCase().includes(lower)
-      || (volunteer.player_name || '').toLowerCase().includes(lower)
-    ).map(v => {
-      const b = balMap[String(v.jumper)] || {};
-      // Use live computed counts; fall back to stored only when no round_summary data exists.
-      const totalAssignments       = b.count     ?? v.total_assignments     ?? 0;
-      const confirmedAssignments   = b.confirmed  ?? v.confirmed_assignments ?? 0;
-      const scheduledAssignments   = b.scheduled  ?? v.scheduled_assignments ?? 0;
-      // Use live assignment chips from round_summary; fall back to stored list.
-      const liveAssignments = (b.assignments && b.assignments.length > 0)
-        ? b.assignments
-        : (v.assignments || []);
-      return {
-        ...v,
-        total_assignments: totalAssignments,
-        confirmed_assignments: confirmedAssignments,
-        scheduled_assignments: scheduledAssignments,
-        assignments: liveAssignments,
-        outRounds: absences
-          .filter(a => String(a.jumper) === String(v.jumper))
-          .map(a => String(a.round)),
-      };
-    }),
-    ineligible,
-  };
-}
-
-function selectBalanceViewModel(state = getState()) {
-  const data = selectStoreData(state);
-  // Always compute from live round_summary so scheduled assignments are visible.
-  // Fall back to stored data.balance only when there are no entries to compute from.
-  const computed = computeClientBalance(data);
-  const balance = computed || data?.balance;
-  if (!balance) return null;
-  const entries = balance.entries || [];
-  const ideal = balance.ideal_assignments_per_volunteer;
-  const maxCount = entries.length ? Math.max(...entries.map(entry => entry.count)) : 1;
-  return {
-    ideal: Number(ideal).toFixed(1),
-    idealPct: maxCount ? Math.min((ideal / maxCount) * 100, 100) : 0,
-    rows: entries.map(entry => ({
-      volunteer: entry.volunteer,
-      count: entry.count,
-      delta: entry.delta ?? 0,
-      barPct: (entry.fraction_of_max !== undefined ? entry.fraction_of_max : entry.count / maxCount) * 100,
-    })),
-  };
-}
-
-function selectConstraintsViewModel(state = getState()) {
-  const data = selectStoreData(state);
-  if (!data) return null;
-
-  // Always copy — data is deep-frozen (state is immutable), so push to a new array.
-  const storedAvoids = data.constraints?.avoid_jobs;
-  let avoids = [...(storedAvoids || [])];
-
-  // Fall back to volunteer profiles only when avoid_jobs key is absent (null constraints or
-  // missing key).  An explicitly-empty [] means "constraints loaded, none defined" — don't
-  // override it with derived data or an explicit clear would immediately re-populate.
-  if (!storedAvoids) {
-    // data.volunteers.eligible carries avoid_jobs per volunteer (ADMIN_SPA).
-    // data.reference_data.volunteers carries the same for USER_SPA.
-    const sources = [
-      ...(data.volunteers?.eligible || []),
-      ...(data.reference_data?.volunteers || []),
-    ];
-    const seen = new Set();
-    for (const v of sources) {
-      const name = v.volunteer || v.volunteer_name || '';
-      const jobs = v.avoid_jobs || [];
-      if (name && jobs.length > 0 && !seen.has(name)) {
-        seen.add(name);
-        avoids.push({ volunteer: name, jobs: Array.isArray(jobs) ? jobs : Array.from(jobs) });
-      }
-    }
-  }
-
-  return {
-    avoids,
-    count: avoids.length,
-  };
-}
-
-function selectNavigationViewModel(state = getState()) {
-  const ui = selectUiState(state);
-  return {
-    activePanel: ui.activePanel,
-    showRoundDetail: ui.activePanel === 'rounds' && !!selectSelectedRound(state),
-  };
-}
-
-function serializeSnapshotModel(state = getState()) {
-  const data = selectStoreData(state);
-  if (!data) return null;
-  return { ...deepClone(data), _schema_version: '1.1' };
-}
+// Shared pure helpers consumed by render code (logic in store-selectors.mjs).
+const { colKey, buildEntriesMap, getInitials, buildSeasonLabel, computeClientBalance } = Sel;
 
 function normalizeRoundRef(roundOrNum) {
   return roundOrNum && typeof roundOrNum === 'object' ? roundOrNum.round : roundOrNum;
@@ -767,6 +145,19 @@ function normalizeRoundRef(roundOrNum) {
 function isIphoneNavViewport() {
   return document.body?.dataset?.deviceTarget === 'iphone'
     || window.matchMedia('(max-width: 430px)').matches;
+}
+
+// CSS-006: the mobile layout lives entirely in the .mobile-layout / .mobile-mini
+// classes (iphone.css). Apply them from BOTH triggers — the max-width media
+// query and the data-device-target attribute — so the rules never drift.
+function syncMobileLayoutClass() {
+  const t = document.body?.dataset?.deviceTarget;
+  const mobile = t === 'iphone' || t === 'iphone-mini'
+    || window.matchMedia('(max-width: 430px)').matches;
+  const mini = t === 'iphone-mini'
+    || window.matchMedia('(max-width: 375px)').matches;
+  document.body.classList.toggle('mobile-layout', mobile);
+  document.body.classList.toggle('mobile-mini', mini);
 }
 
 function markMobileNavHintSeen() {
@@ -960,6 +351,9 @@ async function initStore() {
 
 // ── Bootstrap ────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
+  setupGlobalDelegation();
+  syncMobileLayoutClass();
+  window.addEventListener('resize', syncMobileLayoutClass);
   setupNav();
   setupSettings();
   setupTeamSplits();
@@ -1140,10 +534,8 @@ function _editOppositions() {
 }
 
 function _editLocationsForClub(clubId) {
-  const data = getData();
-  return (data?.reference_data?.locations || [])
-    .filter(l => l.club_id === clubId)
-    .sort((a, b) => a.display_name.localeCompare(b.display_name));
+  // RLOC: delegate to the pure, string-safe home-grounds selector.
+  return homeGroundsForClub(getData()?.reference_data?.locations, clubId);
 }
 
 function _locationField(locs, currentDisplayName) {
@@ -1176,7 +568,7 @@ function openEditMode(r) {
     <div class="edit-form">
       <div class="edit-form-row">
         <span class="edit-form-label">Opposition</span>
-        <select id="editOpposition" onchange="updateEditLocation(this.value)">
+        <select id="editOpposition" data-action="update-edit-location">
           ${oppOpts}
         </select>
       </div>
@@ -1197,8 +589,8 @@ function openEditMode(r) {
         <input type="date" id="editDate" value="${escHtml(round.date || '')}">
       </div>
       <div class="edit-form-actions">
-        <button class="btn" onclick="closeEditMode()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveRoundEdit('${escHtml(String(round.round))}')">Save</button>
+        <button class="btn" data-action="close-edit">Cancel</button>
+        <button class="btn btn-primary" data-action="save-round-edit" data-round="${escHtml(String(round.round))}">Save</button>
       </div>
     </div>`;
 
@@ -1214,10 +606,13 @@ function openEditMode(r) {
 }
 
 function updateEditLocation(clubId) {
+  // RLOC-001/002: when the club changes, pre-select that club's FIRST home ground
+  // (and, when there are several, list them all with the first selected).
   const locs = _editLocationsForClub(clubId);
+  const firstName = firstHomeGroundName(getData()?.reference_data?.locations, clubId);
   const row  = document.getElementById('editLocationRow');
   if (!row) return;
-  row.innerHTML = `<span class="edit-form-label">Location</span>${_locationField(locs, '')}`;
+  row.innerHTML = `<span class="edit-form-label">Location</span>${_locationField(locs, firstName)}`;
 }
 
 function closeEditMode() {
@@ -1284,9 +679,19 @@ async function loadFile(filename) {
   document.getElementById('app').classList.add('show');
 }
 
+// ERG-003: apply the persisted density preference to the body. Density lives in
+// ui_preferences (part of the report) so it survives an IDB reload.
+function applyDensity() {
+  const density = getData()?.ui_preferences?.density || 'moderate';
+  document.body.dataset.density = density;
+  document.querySelectorAll('[data-action="set-density"]').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.density === density));
+}
+
 function render() {
   try { renderLineup();       } catch(e) { console.error('[spa] renderLineup:', e); }
   if (!getData()) return;
+  try { applyDensity();       } catch(e) { console.error('[spa] applyDensity:', e); }
   try { renderNavigation();   } catch(e) { console.error('[spa] renderNavigation:', e); }
   try { renderSidebar();      } catch(e) { console.error('[spa] renderSidebar:', e); }
   try { renderDashboard();    } catch(e) { console.error('[spa] renderDashboard:', e); }
@@ -1301,6 +706,7 @@ function render() {
   try { renderDataCounts();   } catch(e) { console.error('[spa] renderDataCounts:', e); }
 }
 
+// @front-end { element: navigation-panel, intent: "drive panel switching and reflect the active panel + round-detail state", customer: developer, binding: one-way, style: mixed, a11y: wcag-2.1-aa, improve?: "Phase 2 adds focus management + keyboard paths here" }
 function renderNavigation() {
   const viewModel = selectNavigationViewModel();
   const sidebar = document.getElementById('sidebar');
@@ -1338,6 +744,7 @@ function renderNavigation() {
 }
 
 // ── Sidebar metadata ─────────────────────────────────────────────────────
+// @front-end { element: sidebar-panel, intent: "show team identity, season label, and volunteer counts at a glance", customer: reader, binding: one-way, style: mixed, a11y: wcag-2.1-aa, improve?: "Phase 2 adds focus management + keyboard paths here" }
 function renderSidebar() {
   const viewModel = selectSidebarViewModel();
   if (!viewModel) return;
@@ -1357,6 +764,7 @@ function renderSidebar() {
 }
 
 // ── Dashboard ────────────────────────────────────────────────────────────
+// @front-end { element: dashboard-panel, intent: "surface the next actionable round and season totals on landing", customer: reader, binding: one-way, style: mixed, a11y: wcag-2.1-aa, improve?: "Phase 2 adds focus management + keyboard paths here" }
 function renderDashboard() {
   const viewModel = selectDashboardViewModel();
   if (!viewModel) return;
@@ -1438,7 +846,7 @@ function renderDashboard() {
                         : r.home_away === 'h' ? ' · HOME'
                         : r.home_away === 'B' ? ' · BYE' : '';
     const pillLabel = isBye ? `BYE` : `R${r.round}`;
-    return `<span class="round-pill ${cls}" onclick="openRoundDetail('${r.round}')" title="Round ${r.round} · ${r.date}${_pillHaSuffix}">${pillLabel}</span>`;
+    return `<span class="round-pill ${cls}" role="button" tabindex="0" data-action="open-round" data-round="${escHtml(String(r.round))}" title="Round ${r.round} · ${r.date}${_pillHaSuffix}" aria-label="Open round ${escHtml(String(r.round))} detail">${pillLabel}</span>`;
   }).join('');
   document.getElementById('glancePills').innerHTML = pillsHtml;
 
@@ -1461,6 +869,7 @@ function renderDashboard() {
   }
 }
 
+// @front-end { element: fairness-panel, intent: "show workload-spread health as one glanceable score plus per-volunteer squares", customer: reader, binding: one-way, style: mixed, a11y: wcag-2.1-aa, improve?: "Phase 2 adds focus management + keyboard paths here" }
 function renderFairness() {
   const viewModel = selectFairnessViewModel();
   document.getElementById('fairnessNum').textContent = viewModel.score;
@@ -1473,6 +882,7 @@ function renderFairness() {
   document.getElementById('fairnessChart').innerHTML = chartHtml;
 }
 
+// @front-end { element: alerts-panel, intent: "summarise data issues (errors/warnings) behind a single status pill", customer: reader, binding: one-way, style: mixed, a11y: wcag-2.1-aa, improve?: "Phase 2 adds focus management + keyboard paths here" }
 function renderAlerts() {
   const viewModel = selectAlertsViewModel();
   if (!viewModel) return;
@@ -1501,6 +911,7 @@ function renderAlerts() {
 }
 
 // ── Roster (matrix) ──────────────────────────────────────────────────────
+// @front-end { element: roster-panel, intent: "present the season matrix of rounds x jobs for scanning coverage", customer: reader, binding: one-way, style: mixed, a11y: wcag-2.1-aa, improve?: "Phase 2 adds focus management + keyboard paths here" }
 function renderRoster() {
   const viewModel = selectMatrixViewModel();
   if (!viewModel) return;
@@ -1585,6 +996,7 @@ function renderRoster() {
 }
 
 // ── Rounds list ──────────────────────────────────────────────────────────
+// @front-end { element: roundslist-panel, intent: "offer a browseable list of rounds as the entry point to round detail", customer: reader, binding: one-way, style: mixed, a11y: wcag-2.1-aa, improve?: "Phase 2 adds focus management + keyboard paths here" }
 function renderRoundsList() {
   const { rounds, roundCount } = selectRoundsViewModel();
   document.getElementById('roundsSubtitle').textContent = `${roundCount} rounds scheduled`;
@@ -1598,18 +1010,25 @@ function renderRoundsList() {
     const unfilledCount = (roundSummary?.entries || []).filter(e => e.slot_status === 'unfilled').length;
     const unfilledBadge = unfilledCount > 0
       ? `<span class="unfilled-badge">&#x26A0; ${unfilledCount} unfilled</span>` : '';
+    // The card holds focusable controls (confirm + home/away pills), so the card
+    // itself must NOT be a button — nested interactive elements are invalid ARIA.
+    // The round-number span is the keyboard-focusable "open round" affordance
+    // (a leaf, sibling to the pills); the card keeps data-action only so a mouse
+    // click anywhere on it still opens the round via the delegated handler.
+    // Both regular and BYE rounds are openable (BYE detail shows the bye info).
+    const openLabel = isBye ? `Open bye round ${escHtml(String(r.round))} detail` : `Open round ${escHtml(String(r.round))} detail`;
     const roundNumSpan = isBye
-      ? `<span class="round-card-num bye-label">BYE</span>`
-      : `<span class="round-card-num">Round ${escHtml(String(r.round))}</span>`;
+      ? `<span class="round-card-num bye-label" role="button" tabindex="0" data-action="open-round" data-round="${escHtml(String(r.round))}" aria-label="${openLabel}">BYE</span>`
+      : `<span class="round-card-num" role="button" tabindex="0" data-action="open-round" data-round="${escHtml(String(r.round))}" aria-label="${openLabel}">Round ${escHtml(String(r.round))}</span>`;
     const haWrap = isBye
       ? `<span class="ha-pill bye">BYE</span>`
-      : `<span onclick="event.stopPropagation()">${haTogglePill(r)}</span>`;
+      : haTogglePill(r);
     const oppHtml = isBye ? '' : `<div class="round-card-opp">vs. ${escHtml(resolveOpposition(r))}</div>`;
-    return `<div class="round-card" data-round="${escHtml(String(r.round))}" onclick="openRoundDetail('${r.round}')">
+    return `<div class="round-card" data-action="open-round" data-round="${escHtml(String(r.round))}">
       <div class="round-card-head">
         ${roundNumSpan}
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
-          <span class="status-pill ${isConfirmed ? 'ok' : 'warn'}" style="cursor:pointer;user-select:none" title="Click to ${isConfirmed ? 'unconfirm' : 'confirm'} this round" onclick="event.stopPropagation(); confirmRoundFromList('${escHtml(String(r.round))}');">${isConfirmed ? '&#x2713; Confirmed' : '&#x7E; Scheduled'}</span>
+          <span class="status-pill ${isConfirmed ? 'ok' : 'warn'}" role="button" tabindex="0" style="cursor:pointer;user-select:none" title="Click to ${isConfirmed ? 'unconfirm' : 'confirm'} this round" aria-label="${isConfirmed ? 'Unconfirm' : 'Confirm'} round ${escHtml(String(r.round))}" data-action="confirm-round" data-round="${escHtml(String(r.round))}">${isConfirmed ? '&#x2713; Confirmed' : '&#x7E; Scheduled'}</span>
           ${haWrap}
         </div>
         ${unfilledBadge}
@@ -1634,10 +1053,11 @@ function openRoundDetail(r) {
   render();
 }
 
+// @front-end { element: rounddetail-panel, intent: "show everything about one round: assignments, print preview, email text", customer: reader, binding: one-way, style: mixed, a11y: wcag-2.1-aa, improve?: "Phase 2 adds focus management + keyboard paths here" }
 function renderRoundDetail() {
   const viewModel = selectRoundDetailViewModel();
   if (!viewModel) return;
-  const { round: r, totalRounds } = viewModel;
+  const { round: r, totalRounds, locked } = viewModel;
 
   document.getElementById('roundsListView').classList.add('hidden');
   document.getElementById('roundDetail').classList.add('active');
@@ -1655,8 +1075,10 @@ function renderRoundDetail() {
     _notesEl.textContent = r.extra_notes || '';
     _notesEl.classList.toggle('hidden', !r.extra_notes);
   }
+  // RLK-006: status pill (Completed / Confirmed / Scheduled) via the pure helper.
+  const pill = roundStatusPill(r.status);
   document.getElementById('detailPill').innerHTML =
-    `<span class="status-pill ${r.status === 'confirmed' ? 'ok' : 'warn'}">${r.status === 'confirmed' ? 'Confirmed' : 'Scheduled'}</span>` +
+    `<span class="status-pill ${pill.cls}">${pill.label}</span>` +
     (homeAwayLabel(r) ? ` ${haTogglePill(r)}` : '');
 
   // Build print preview
@@ -1667,20 +1089,39 @@ function renderRoundDetail() {
   const cb = document.getElementById('detailCopyblock');
   cb.textContent = plainText;
 
-  document.getElementById('btnCopyDetail').onclick = () => {
-    copyToClipboard(plainText);
+  // CPT-001: copy + success toast.
+  document.getElementById('btnCopyDetail').onclick = async () => {
+    if (await copyToClipboard(plainText)) showSnapshotToast(copyToastMessage(), 'ok');
     cb.classList.add('flash');
     setTimeout(() => cb.classList.remove('flash'), 600);
   };
-  document.getElementById('btnEditRound').onclick = () => openEditMode(r.round);
+
+  // RLK-003: a completed (locked) round is read-only — edit/confirm/reallocate disabled.
+  const editBtn = document.getElementById('btnEditRound');
+  editBtn.onclick = () => openEditMode(r.round);
+  editBtn.disabled = locked;
 
   const isConfirmed = r.status === 'confirmed';
   const confirmBtn = document.getElementById('btnConfirmRound');
   confirmBtn.textContent = isConfirmed ? 'Unconfirm Round' : 'Confirm Round';
   confirmBtn.className = isConfirmed ? 'btn' : 'btn btn-primary';
   confirmBtn.onclick = () => toggleConfirmRound(r.round);
+  confirmBtn.disabled = locked;
 
-  document.getElementById('btnReallocate').onclick = () => reallocate();
+  const reallocBtn = document.getElementById('btnReallocate');
+  reallocBtn.onclick = () => reallocate();
+  reallocBtn.disabled = locked;
+
+  // RLK-001/002: the lock control toggles completed↔confirmed.
+  const lockBtn = document.getElementById('btnLockRound');
+  if (lockBtn) {
+    lockBtn.textContent = locked ? '🔓 Unlock round' : '🔒 Lock (match done)';
+    lockBtn.onclick = () => {
+      dispatch({ type: 'toggle-round-locked', payload: { roundNum: r.round } });
+      dispatch({ type: 'set-round-detail', payload: { roundNum: r.round, open: true } });
+      render();
+    };
+  }
 }
 
 function toggleConfirmRound(roundNum) {
@@ -1745,18 +1186,18 @@ function buildPrintPreview(r) {
       const jobEsc     = escHtml(e.job || col.job || '');
       const subteamEsc = escHtml(e.subteam || 'shared');
       const slotIdx    = e.slot_index ?? 0;
-      const swapOnclick = `openVolSwap('${roundEsc}','${jobEsc}','${subteamEsc}',${slotIdx})`;
+      // Delegated swap trigger: data-action + the four slot-identifying attributes.
+      const swapAttrs = `data-action="open-vol-swap" data-round="${roundEsc}" data-job="${jobEsc}" data-subteam="${subteamEsc}" data-slot="${slotIdx}"`;
       if (e.slot_status === 'unfilled' || !e.jumper) {
-        return { volHtml: '', swapHtml: `<button class="vol-swap-btn unfilled" onclick="${swapOnclick}" title="Click to assign">⚠ unfilled</button>` };
+        return { volHtml: '', swapHtml: `<button class="vol-swap-btn unfilled" ${swapAttrs} title="Click to assign">⚠ unfilled</button>` };
       }
       const manualBadge = e.slot_status === 'manual' ? '<span class="manual-badge">M</span>' : '';
-      const popupOnclick = ` onclick="showVolPopup('${escHtml(String(e.jumper))}')"`;
       return {
-        volHtml: `<span style="display:inline-block;margin:0 6px 0 0;cursor:pointer"${popupOnclick}>
+        volHtml: `<span style="display:inline-block;margin:0 6px 0 0;cursor:pointer" data-action="show-vol-popup" data-jumper="${escHtml(String(e.jumper))}">
           <span class="pp-jumper-big">#${escHtml(e.jumper)}</span>
           <span class="pp-vol-name">${escHtml(resolveVolunteerName(e))}${manualBadge}</span>
         </span>`,
-        swapHtml: `<button class="vol-swap-btn vol-swap-btn-small" onclick="${swapOnclick}" title="Swap volunteer">&#8644;</button>`,
+        swapHtml: `<button class="vol-swap-btn vol-swap-btn-small" ${swapAttrs} title="Swap volunteer">&#8644;</button>`,
       };
     });
 
@@ -1843,12 +1284,15 @@ function buildEmailText(r) {
   return [...preamble, ...lines].join('\n');
 }
 
-function copyRoundText(r) {
-  const text = buildEmailText(r);
-  copyToClipboard(text);
+async function copyRoundText(r) {
+  // CPT-001/002: success toast (ok style, emoji label) only after the write resolves.
+  if (await copyToClipboard(buildEmailText(r))) {
+    showSnapshotToast(copyToastMessage(), 'ok');
+  }
 }
 
 // ── Volunteers ────────────────────────────────────────────────────────────
+// @front-end { element: volunteers-panel, intent: "list volunteers with live assignment counts and an expandable timeline", customer: reader, binding: one-way, style: mixed, a11y: wcag-2.1-aa, improve?: "Phase 2 adds focus management + keyboard paths here" }
 function renderVolunteers(filter = document.getElementById('volSearch')?.value || '') {
   const viewModel = selectVolunteersViewModel(filter);
   if (!viewModel) return;
@@ -1856,19 +1300,20 @@ function renderVolunteers(filter = document.getElementById('volSearch')?.value |
   document.getElementById('volSubtitle').textContent =
     `${viewModel.eligibleCount} active · names live in your browser only`;
 
+  // CLM-006: expanded-rows state lives in the store (survives IDB reload).
+  const expandedSet = new Set((getState().ui.expandedVolJumpers || []).map(String));
   const tbody = document.getElementById('volTableBody');
   tbody.innerHTML = viewModel.filtered.map(v => {
     const certs  = (v.certifications || []).map(c => `<span class="cert-chip">${escHtml(c)}</span>`).join('');
     const prefs  = (v.preferred_jobs || []).map(j => `<span class="vtag vtag-pref">★ ${escHtml(j)}</span>`).join('');
     const avoids = (v.avoid_jobs     || []).map(j => `<span class="vtag vtag-avoid">✕ ${escHtml(j)}</span>`).join('');
-    const isExpanded = _expandedVols.has(v.jumper);
+    const isExpanded = expandedSet.has(String(v.jumper));
     const expandIcon = isExpanded ? '&#9650;' : '&#9660;';
 
     const mainRow = `<tr>
       <td><span class="jumper-chip">#${escHtml(v.jumper)}</span></td>
       <td>
-        <div class="vol-name-main vol-expandable"
-          onclick="_expandedVols.has('${escHtml(v.jumper)}') ? _expandedVols.delete('${escHtml(v.jumper)}') : _expandedVols.add('${escHtml(v.jumper)}'); renderVolunteers()">
+        <div class="vol-name-main vol-expandable" role="button" tabindex="0" aria-expanded="${isExpanded ? 'true' : 'false'}" data-action="toggle-vol-expand" data-jumper="${escHtml(String(v.jumper))}" aria-label="Toggle assignment timeline for ${escHtml(v.volunteer)}">
           ${escHtml(v.volunteer)} <span class="vol-expand-icon">${expandIcon}</span>
         </div>
         <div class="vol-name-sub">
@@ -1943,21 +1388,24 @@ document.getElementById('volSearch').addEventListener('input', e => {
 });
 
 // ── Balance ───────────────────────────────────────────────────────────────
+// @front-end { element: balance-panel, intent: "show sortable workload bars measured against the ideal allocation", customer: reader, binding: one-way, style: mixed, a11y: wcag-2.1-aa, improve?: "Phase 2 adds focus management + keyboard paths here" }
 function renderBalance() {
   const viewModel = selectBalanceViewModel();
   if (!viewModel) return;
   document.getElementById('idealCount').textContent = viewModel.ideal;
 
+  // CLM-006: balance sort key lives in the store (survives IDB reload).
+  const balanceSort = getState().ui.balanceSortKey || 'most-loaded';
   const sortedRows = viewModel.rows.slice().sort((a, b) => {
-    if (_balanceSort === 'name')        return (a.volunteer || '').localeCompare(b.volunteer || '');
-    if (_balanceSort === 'least-loaded') return a.delta - b.delta;
+    if (balanceSort === 'name')        return (a.volunteer || '').localeCompare(b.volunteer || '');
+    if (balanceSort === 'least-loaded') return a.delta - b.delta;
     return b.delta - a.delta; // 'most-loaded' default
   });
 
   const sortHtml = `<div class="balance-sort">
-    <button onclick="_balanceSort='name'; renderBalance()" class="${_balanceSort === 'name' ? 'active' : ''}">Name A–Z</button>
-    <button onclick="_balanceSort='most-loaded'; renderBalance()" class="${_balanceSort === 'most-loaded' ? 'active' : ''}">Most loaded</button>
-    <button onclick="_balanceSort='least-loaded'; renderBalance()" class="${_balanceSort === 'least-loaded' ? 'active' : ''}">Least loaded</button>
+    <button data-action="set-balance-sort" data-sort="name" class="${balanceSort === 'name' ? 'active' : ''}">Name A–Z</button>
+    <button data-action="set-balance-sort" data-sort="most-loaded" class="${balanceSort === 'most-loaded' ? 'active' : ''}">Most loaded</button>
+    <button data-action="set-balance-sort" data-sort="least-loaded" class="${balanceSort === 'least-loaded' ? 'active' : ''}">Least loaded</button>
   </div>`;
 
   const rowsHtml = sortedRows.map(entry => {
@@ -1982,6 +1430,7 @@ function renderBalance() {
 }
 
 // ── Constraints ───────────────────────────────────────────────────────────
+// @front-end { element: constraints-panel, intent: "list avoid-job rules per volunteer so conflicts are visible", customer: reader, binding: one-way, style: mixed, a11y: wcag-2.1-aa, improve?: "Phase 2 adds focus management + keyboard paths here" }
 function renderConstraints() {
   const viewModel = selectConstraintsViewModel();
   if (!viewModel) return;
@@ -2003,6 +1452,7 @@ function renderConstraints() {
 }
 
 // ── Settings ──────────────────────────────────────────────────────────────
+// @front-end { element: settings-panel, intent: "gather team identity, theme, print footer, and data tools in one panel", customer: writer, binding: one-way, style: mixed, a11y: wcag-2.1-aa, improve?: "Phase 2 adds focus management + keyboard paths here" }
 function renderSettings() {
   const viewModel = selectSettingsViewModel();
   if (!viewModel) return;
@@ -2034,6 +1484,18 @@ function renderSettings() {
   if (vEl) {
     const ver = window.__APP_VERSION || 'dev';
     vEl.textContent = `v${ver}`;
+  }
+
+  // SPA-DNG-001 / SPA-DNG-002: sync delete button with download flag
+  const _deleteBtn = document.getElementById('btnDeleteData');
+  if (_deleteBtn) {
+    _deleteBtn.disabled = localStorage.getItem('footy-manager-has-downloaded') !== '1';
+  }
+  // SPA-DNG-003 / SPA-DNG-006: reset inline confirmation on each render
+  const _confirmBtn = document.getElementById('btnConfirmDeleteData');
+  if (_deleteBtn && _confirmBtn) {
+    _deleteBtn.style.display = '';
+    _confirmBtn.style.display = 'none';
   }
 }
 
@@ -2144,6 +1606,7 @@ function _tspTouchEnd(e) {
   }
 }
 
+// @front-end { element: teamsplits-panel, intent: "let the user drag or tap players between subteams for a round", customer: writer, binding: one-way, style: mixed, a11y: wcag-2.1-aa, improve?: "Phase 2 adds focus management + keyboard paths here" }
 function renderTeamSplits() {
   const content = document.getElementById('teamSplitsContent');
   const select = document.getElementById('teamSplitsRoundSelect');
@@ -2226,10 +1689,11 @@ function renderTeamSplits() {
       const absentBadge = absent ? ' <span class="tsp-out-badge">OUT</span>' : '';
       const jEsc = escHtml(String(p.jumper));
       const stEsc = escHtml(subteam);
-      return `<div class="tsp-player-row${absent ? ' tsp-absent' : ''}" data-jumper="${jEsc}"
-        draggable="true"
-        ondragstart="event.dataTransfer.setData('text/plain',JSON.stringify({jumper:'${jEsc}',fromSubteam:'${stEsc}'}));event.dataTransfer.effectAllowed='move'"
-        ontouchstart="tspTouchStart(this,event)">
+      // Drag/touch handled by delegated listeners on #teamSplitsContent
+      // (wired once in setupTeamSplits). The row carries its jumper and its
+      // current subteam so the handler can build the drag payload.
+      return `<div class="tsp-player-row${absent ? ' tsp-absent' : ''}" data-jumper="${jEsc}" data-subteam="${stEsc}"
+        draggable="true">
         <span class="jumper-chip">#${escHtml(String(p.jumper))}</span>
         <span class="tsp-player-name">${escHtml(p.player_name || '')}</span>${absentBadge}
       </div>`;
@@ -2237,15 +1701,101 @@ function renderTeamSplits() {
     const stEsc = escHtml(subteam);
     const playerCount = groups[subteam].length;
     const countLabel = `${playerCount} player${playerCount !== 1 ? 's' : ''}`;
-    return `<div class="tsp-group" data-subteam="${stEsc}"
-      ondragover="event.preventDefault();event.dataTransfer.dropEffect='move';this.classList.add('tsp-drop-target')"
-      ondragleave="this.classList.remove('tsp-drop-target')"
-      ondrop="(function(el,ev){ev.preventDefault();el.classList.remove('tsp-drop-target');try{var d=JSON.parse(ev.dataTransfer.getData('text/plain'));var toSt=el.dataset.subteam;if(d.fromSubteam===toSt)return;var roundSel=document.getElementById('teamSplitsRoundSelect');var rnd=roundSel?roundSel.value:'';if(!rnd)return;dispatch({type:'set-split',payload:{round:rnd,jumper:d.jumper,subteam:toSt}});render();}catch(e){console.error('tsp-drop',e);}})(this,event)">
+    return `<div class="tsp-group" data-subteam="${stEsc}">
       <div class="tsp-group-label">${escHtml(subteamLabel(subteam))}</div>
       ${rows}
       <div class="tsp-group-summary">${countLabel}</div>
     </div>`;
   }).join('');
+}
+
+// ── Global delegated event handling (CLM-001) ──────────────────────────────
+// A single click + keydown listener replaces every former inline on* handler.
+// Each interactive element declares its intent via data-action plus the data-*
+// attributes that action needs. event.target.closest('[data-action]') resolves
+// the innermost actionable element, so nested pills never trigger their parent.
+function cycleLineupCell(round, jumper, current) {
+  if (current === 'A') {
+    dispatch({ type: 'set-split', payload: { round, jumper, subteam: 'B' } });
+  } else if (current === 'B') {
+    dispatch({ type: 'toggle-player-absent', payload: { round, jumper } });
+  } else { // 'OUT' → back to A
+    dispatch({ type: 'toggle-player-absent', payload: { round, jumper } });
+    dispatch({ type: 'set-split', payload: { round, jumper, subteam: 'A' } });
+  }
+  renderLineup();
+}
+
+function handleGlobalClick(ev) {
+  const el = ev.target.closest('[data-action]');
+  if (!el) return;
+  const d = el.dataset;
+  switch (d.action) {
+    // Navigation / rounds
+    case 'open-round':       openRoundDetail(d.round); break;
+    case 'confirm-round':    confirmRoundFromList(d.round); break;
+    case 'toggle-ha':        toggleHomeAway(d.round); break;
+    case 'close-edit':       closeEditMode(); break;
+    case 'save-round-edit':  saveRoundEdit(d.round); break;
+    // Volunteers
+    case 'show-vol-popup':   showVolPopup(d.jumper); break;
+    case 'toggle-vol-expand':
+      dispatch({ type: 'toggle-vol-expanded', payload: { jumper: d.jumper } });
+      renderVolunteers();
+      break;
+    case 'open-vol-swap':    openVolSwap(d.round, d.job, d.subteam, Number(d.slot)); break;
+    case 'confirm-vol-swap': confirmVolSwap(d.round, d.job, d.subteam, Number(d.slot), d.volunteer, d.jumper); break;
+    case 'unset-vol-swap':   unsetVolSwap(d.round, d.job, d.subteam, Number(d.slot)); break;
+    case 'close-vol-popup':  closeVolPopup(); break;
+    case 'close-vol-swap':   closeVolSwap(); break;
+    // Balance
+    case 'set-balance-sort':
+      dispatch({ type: 'set-balance-sort', payload: { sortKey: d.sort } });
+      renderBalance();
+      break;
+    // Lineup
+    case 'cycle-lineup':     cycleLineupCell(d.round, d.jumper, d.current); break;
+    case 'show-lineup-guide': { const ol = document.getElementById('lineupGuideOverlay'); if (ol) ol.style.display = 'flex'; break; }
+    case 'hide-lineup-guide': { const ol = document.getElementById('lineupGuideOverlay'); if (ol) ol.style.display = 'none'; break; }
+    // Settings / app
+    case 'set-skin':         setSkin(d.skin); break;
+    case 'set-density':
+      dispatch({ type: 'set-ui-preference', payload: { key: 'density', value: d.density } });
+      applyDensity();
+      break;
+    case 'print':            window.print(); break;
+    case 'open-picker':      openPicker(); break;
+    case 'save-snapshot':    saveSnapshot(); break;
+    default: break;
+  }
+}
+
+function handleGlobalChange(ev) {
+  const el = ev.target.closest('[data-action]');
+  if (!el) return;
+  switch (el.dataset.action) {
+    case 'update-edit-location': updateEditLocation(el.value); break;
+    case 'set-skin-select':      setSkin(el.value); break;
+    default: break;
+  }
+}
+
+// Keyboard activation for non-native-button actionable elements (Enter/Space).
+// Native <button>/<a> already fire click on Enter/Space, so they are skipped.
+function handleGlobalKeydown(ev) {
+  if (ev.key !== 'Enter' && ev.key !== ' ') return;
+  const el = ev.target.closest('[data-action]');
+  if (!el) return;
+  if (el.tagName === 'BUTTON' || el.tagName === 'A') return;
+  ev.preventDefault();
+  el.click();
+}
+
+function setupGlobalDelegation() {
+  document.addEventListener('click', handleGlobalClick);
+  document.addEventListener('change', handleGlobalChange);
+  document.addEventListener('input', handleGlobalInput);
+  document.addEventListener('keydown', handleGlobalKeydown);
 }
 
 function setupTeamSplits() {
@@ -2271,6 +1821,51 @@ function setupTeamSplits() {
   // even when it moves outside the originating element.
   document.addEventListener('touchmove', _tspTouchMove, { passive: false });
   document.addEventListener('touchend',  _tspTouchEnd);
+
+  // Delegated desktop drag-and-drop + touch start on the team-splits board.
+  // Attached once to the container; survives innerHTML re-renders of children.
+  const content = document.getElementById('teamSplitsContent');
+  if (content) {
+    content.addEventListener('dragstart', e => {
+      const row = e.target.closest('.tsp-player-row');
+      if (!row) return;
+      e.dataTransfer.setData('text/plain', JSON.stringify({
+        jumper: row.dataset.jumper, fromSubteam: row.dataset.subteam,
+      }));
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    content.addEventListener('dragover', e => {
+      const group = e.target.closest('.tsp-group');
+      if (!group) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      group.classList.add('tsp-drop-target');
+    });
+    content.addEventListener('dragleave', e => {
+      const group = e.target.closest('.tsp-group');
+      if (group) group.classList.remove('tsp-drop-target');
+    });
+    content.addEventListener('drop', e => {
+      const group = e.target.closest('.tsp-group');
+      if (!group) return;
+      e.preventDefault();
+      group.classList.remove('tsp-drop-target');
+      try {
+        const d = JSON.parse(e.dataTransfer.getData('text/plain'));
+        const toSt = group.dataset.subteam;
+        if (d.fromSubteam === toSt) return;
+        const roundSel = document.getElementById('teamSplitsRoundSelect');
+        const rnd = roundSel ? roundSel.value : '';
+        if (!rnd) return;
+        dispatch({ type: 'set-split', payload: { round: rnd, jumper: d.jumper, subteam: toSt } });
+        render();
+      } catch (err) { console.error('tsp-drop', err); }
+    });
+    content.addEventListener('touchstart', e => {
+      const row = e.target.closest('.tsp-player-row');
+      if (row) tspTouchStart(row, e);
+    }, { passive: false });
+  }
 }
 
 // ── Nav ───────────────────────────────────────────────────────────────────
@@ -2319,6 +1914,12 @@ function setupSettings() {
   if (importFileInput) {
     importFileInput.addEventListener('change', handleTmDataImport);
   }
+
+  // SPA-DNG-003 / SPA-DNG-004: danger zone handlers
+  const deleteBtn  = document.getElementById('btnDeleteData');
+  const confirmBtn = document.getElementById('btnConfirmDeleteData');
+  if (deleteBtn)  deleteBtn.addEventListener('click', handleDeleteDataClick);
+  if (confirmBtn) confirmBtn.addEventListener('click', handleConfirmDeleteData);
 }
 
 function exportTmData() {
@@ -2360,6 +1961,32 @@ function exportTmData() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+
+  // SPA-DNG-002: mark that a backup has been downloaded
+  try {
+    localStorage.setItem('footy-manager-has-downloaded', '1');
+    const _db = document.getElementById('btnDeleteData');
+    if (_db) _db.disabled = false;
+  } catch (_) {}
+}
+
+// SPA-DNG-003: first click — show inline confirmation
+function handleDeleteDataClick() {
+  const deleteBtn  = document.getElementById('btnDeleteData');
+  const confirmBtn = document.getElementById('btnConfirmDeleteData');
+  if (!deleteBtn || !confirmBtn) return;
+  deleteBtn.style.display  = 'none';
+  confirmBtn.style.display = '';
+}
+
+// SPA-DNG-004: second click — execute deletion
+async function handleConfirmDeleteData() {
+  try { await window.__idb.clearSnapshot(); } catch (_) {}
+  try {
+    localStorage.removeItem('footy-manager-has-downloaded');
+    localStorage.removeItem('footy-wizard-draft');
+  } catch (_) {}
+  location.reload();
 }
 
 function handleTmDataImport() {
@@ -2424,33 +2051,35 @@ function switchPanel(name) {
 }
 
 // ── Skin switcher ─────────────────────────────────────────────────────────
-function setSkin(name) {
+// Apply a skin to the DOM without persisting (used by the OS-preference default).
+function applySkin(name) {
   document.body.setAttribute('data-skin', name);
-  document.querySelectorAll('.skin-btn').forEach(btn =>
-    btn.classList.toggle('active', btn.dataset.skin === name)
-  );
-  localStorage.setItem('roster-skin', name);
+  const picker = document.getElementById('skinPicker');
+  if (picker && picker.value !== name) picker.value = name;
 }
+
+function setSkin(name) {
+  applySkin(name);
+  localStorage.setItem('roster-skin', name); // explicit user choice → persist
+}
+
+const VALID_SKINS = ['dark', 'forest', 'sunset', 'nautical', 'cobalt', 'night-vision', 'native', 'chrome', 'sports', 'parallax', 'forest-shadows', 'saturn', 'andres-de-poitrein'];
 
 function restoreSkin() {
   const saved = localStorage.getItem('roster-skin');
-  if (saved && ['dark', 'forest', 'sunset', 'nautical', 'cobalt', 'night-vision', 'native', 'chrome', 'sports', 'parallax', 'forest-shadows', 'saturn', 'andres-de-poitrein'].includes(saved)) setSkin(saved);
+  if (saved && VALID_SKINS.includes(saved)) {
+    applySkin(saved);
+    return;
+  }
+  // CSS-007: no stored preference → honour the OS colour-scheme each load
+  // (not persisted, so it keeps following the OS until the user picks a skin).
+  // prefers light → the light skin (forest); otherwise the dark default.
+  const prefersLight = typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-color-scheme: light)').matches;
+  applySkin(prefersLight ? 'forest' : 'dark');
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
-function colKey(c) {
-  return `${c.job}|||${c.subteam}`;
-}
-
-function buildEntriesMap(entries) {
-  const map = {};
-  entries.forEach(e => {
-    const k = colKey(e);
-    if (!map[k]) map[k] = [];
-    map[k].push(e);
-  });
-  return map;
-}
 
 function dashChipHtml(e) {
   if (e.slot_status === 'unfilled' || !e.jumper) {
@@ -2469,28 +2098,9 @@ function chipHtml(e) {
   return `<span class="jumper-chip" title="${escHtml(name)}">#${escHtml(e.jumper)}</span><span>${escHtml(name)}</span>`;
 }
 
-function getVolJumper(name) {
-  const data = getData();
-  if (!data) return '';
-  const all = (data.volunteers?.eligible || []).concat(data.volunteers?.ineligible || []);
-  const v = all.find(v => v.volunteer === name);
-  if (v) return v.jumper;
-  // USER_SPA: fall back to user_team roster
-  const member = (data.user_team?.roster || []).find(m => m.name === name);
-  return member ? String(member.jumper || '') : '';
-}
-
-function getVolunteerByJumper(jumper) {
-  const data = getData();
-  if (!data || !jumper) return '';
-  // Admin/server data model: volunteers list
-  const all = (data.volunteers?.eligible || []).concat(data.volunteers?.ineligible || []);
-  const v = all.find(v => String(v.jumper) === String(jumper));
-  if (v) return v.volunteer || '';
-  // USER_SPA data model: user_team roster
-  const member = (data.user_team?.roster || []).find(m => String(m.jumper) === String(jumper));
-  return member ? (member.name || '') : '';
-}
+// Thin wrappers: resolution logic lives in store-selectors.mjs; inject getData().
+function getVolJumper(name) { return Sel.resolveJumperByName(getData(), name); }
+function getVolunteerByJumper(jumper) { return Sel.resolveNameByJumper(getData(), jumper); }
 
 function resolveVolunteerName(entry) {
   if (!entry) return '';
@@ -2522,11 +2132,6 @@ function resolveOpposition(round) {
   return round.opposition || '—';
 }
 
-function getInitials(name) {
-  if (!name) return '?';
-  return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
-}
-
 function fmtDate(dateStr) {
   if (!dateStr) return '—';
   const d = new Date(dateStr + 'T00:00:00');
@@ -2546,28 +2151,27 @@ function fmtTime(isoStr) {
   return d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-function copyToClipboard(text) {
+// CPT: resolves true when the copy succeeds, false otherwise — so callers can
+// show the success toast only on a real write.
+async function copyToClipboard(text) {
   if (navigator.clipboard) {
-    navigator.clipboard.writeText(text).catch(() => {});
-  } else {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
-}
-
-function escHtml(str) {
-  if (str == null) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+  document.body.removeChild(ta);
+  return ok;
 }
 
 function homeAwayLabel(r) {
@@ -2584,7 +2188,7 @@ function haTogglePill(r) {
   if (r.home_away === 'B') {
     return `<span class="ha-pill bye">${label.text}</span>`;
   }
-  return `<span class="ha-pill ${label.cls}" role="button" style="cursor:pointer;user-select:none" onclick="toggleHomeAway('${escHtml(String(r.round))}')">${label.text}</span>`;
+  return `<span class="ha-pill ${label.cls}" role="button" tabindex="0" style="cursor:pointer;user-select:none" data-action="toggle-ha" data-round="${escHtml(String(r.round))}" aria-label="Toggle home/away for round ${escHtml(String(r.round))} (currently ${label.text})">${label.text}</span>`;
 }
 
 function toggleHomeAway(roundNum) {
@@ -2650,6 +2254,7 @@ function saveUserTeam() {
 }
 
 // ── Lineup (splits editor) ───────────────────────────────────────────────
+// @front-end { element: lineup-panel, intent: "let the user cycle each player A/B/OUT slot across rounds in a grid", customer: writer, binding: one-way, style: mixed, a11y: wcag-2.1-aa, improve?: "Phase 2 adds focus management + keyboard paths here" }
 function renderLineup() {
   const container = document.getElementById('lineupMatrix');
   if (!container) return;
@@ -2696,20 +2301,14 @@ function renderLineup() {
       const current = absent ? 'OUT' : (splitMap[key] || 'A');
       const rEsc = escHtml(String(r.round));
       const jEsc = escHtml(String(p.jumper));
-      let onclick;
-      if (current === 'A') {
-        onclick = `dispatch({type:'set-split',payload:{round:'${rEsc}',jumper:'${jEsc}',subteam:'B'}});renderLineup();`;
-      } else if (current === 'B') {
-        onclick = `dispatch({type:'toggle-player-absent',payload:{round:'${rEsc}',jumper:'${jEsc}'}});renderLineup();`;
-      } else {
-        onclick = `dispatch({type:'toggle-player-absent',payload:{round:'${rEsc}',jumper:'${jEsc}'}});dispatch({type:'set-split',payload:{round:'${rEsc}',jumper:'${jEsc}',subteam:'A'}});renderLineup();`;
-      }
+      // Delegated cycle handler reads data-current to know which transition to apply.
       const tdCls = absent ? ' lineup-td-out' : '';
       return `<td class="lineup-td-cell${tdCls}"><button
         class="lineup-cell-btn ${escHtml(current)}"
+        data-action="cycle-lineup"
         data-round="${rEsc}"
         data-jumper="${jEsc}"
-        onclick="${onclick}"
+        data-current="${escHtml(current)}"
         title="Rd ${rEsc} · #${jEsc} ${escHtml(p.player_name || '')} — click to toggle"
       >${escHtml(current)}</button></td>`;
     }).join('');
@@ -2720,14 +2319,13 @@ function renderLineup() {
   }).join('');
 
   container.innerHTML = `<button class="lineup-help-btn"
-    onclick="var ol=document.getElementById('lineupGuideOverlay');if(ol)ol.style.display='flex'"
-    onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}"
+    data-action="show-lineup-guide"
     title="How to use the lineup" aria-label="Show lineup instructions"
     aria-controls="lineupGuideOverlay">&#x1F4A1;</button>
 
   <div id="lineupGuideOverlay" class="lineup-guide-overlay" style="display:none"
     role="dialog" aria-modal="true" aria-label="Lineup instructions"
-    onclick="this.style.display='none'">
+    data-action="hide-lineup-guide">
     <div class="lineup-guide-card">
       <p><strong>Tap any cell</strong> to cycle a player's slot:</p>
       <p class="lineup-guide-cycle">A &rarr; B &rarr; OUT &rarr; A</p>
@@ -2754,6 +2352,8 @@ function renderLineup() {
 function openVolSwap(roundNum, job, subteam, slotIndex) {
   const data = getData();
   if (!data) return;
+  // RLK-003: a completed (locked) round is read-only — no volunteer swaps.
+  if (isRoundLocked(getRoundByNum(roundNum))) return;
 
   const eligibleVols = (data.volunteers && data.volunteers.eligible) || [];
   const splits = (data.reference_data && data.reference_data.splits) || [];
@@ -2791,19 +2391,46 @@ function openVolSwap(roundNum, job, subteam, slotIndex) {
   );
   const isManual = currentEntry && currentEntry.slot_status === 'manual';
 
+  const slotAttrs = `data-round="${escHtml(String(roundNum))}" data-job="${escHtml(job)}" data-subteam="${escHtml(subteam)}" data-slot="${Number(slotIndex)}"`;
   const unsetBtn = isManual
-    ? `<button class="vol-swap-item vol-swap-item-unset" onclick="unsetVolSwap('${escHtml(String(roundNum))}','${escHtml(job)}','${escHtml(subteam)}',${Number(slotIndex)})">↩ Unset — revert to automatic allocation</button>`
+    ? `<button class="vol-swap-item vol-swap-item-unset" data-action="unset-vol-swap" ${slotAttrs}>↩ Unset — revert to automatic allocation</button>`
     : '';
 
-  const list = document.getElementById('volSwapList');
-  list.innerHTML = unsetBtn + (candidates.length === 0
-    ? '<p class="vol-swap-empty">No eligible volunteers available</p>'
-    : candidates.map(v =>
-        `<button class="vol-swap-item" onclick="confirmVolSwap('${escHtml(String(roundNum))}','${escHtml(job)}','${escHtml(subteam)}',${Number(slotIndex)},'${escHtml(v.volunteer)}','${escHtml(v.jumper)}')">#${escHtml(v.jumper)} ${escHtml(v.volunteer)}</button>`
-      ).join(''));
+  // ERG-007: stash the candidate set so the typeahead can re-filter without
+  // recomputing eligibility. The search input lives outside #volSwapList so it
+  // keeps focus across re-renders.
+  _volSwapState = { candidates, slotAttrs, unsetBtn };
+  const search = document.getElementById('volSwapSearch');
+  if (search) search.value = '';
+  renderVolSwapList('');
 
   overlay.classList.remove('hidden');
   backdrop.classList.remove('hidden');
+}
+
+let _volSwapState = null;
+
+function renderVolSwapList(filter) {
+  const list = document.getElementById('volSwapList');
+  if (!list || !_volSwapState) return;
+  const { candidates, slotAttrs, unsetBtn } = _volSwapState;
+  const lower = String(filter || '').toLowerCase();
+  const shown = candidates.filter(v =>
+    String(v.volunteer || '').toLowerCase().includes(lower)
+    || String(v.jumper || '').toLowerCase().includes(lower));
+  list.innerHTML = unsetBtn + (shown.length === 0
+    ? '<p class="vol-swap-empty">No matching volunteers</p>'
+    : shown.map(v =>
+        `<button class="vol-swap-item" data-action="confirm-vol-swap" ${slotAttrs} data-volunteer="${escHtml(v.volunteer)}" data-jumper="${escHtml(v.jumper)}">#${escHtml(v.jumper)} ${escHtml(v.volunteer)}</button>`
+      ).join(''));
+}
+
+function handleGlobalInput(ev) {
+  const el = ev.target.closest('[data-action]');
+  if (!el) return;
+  if (el.dataset.action === 'filter-vol-swap') {
+    renderVolSwapList(el.value);
+  }
 }
 
 function unsetVolSwap(roundNum, job, subteam, slotIndex) {
@@ -2915,14 +2542,17 @@ const DATA_SCHEMAS = {
   volunteers: {
     pk: 'jumper',
     label: 'Volunteer Prefs',
-    // volunteer_name is display-only (derived from players) — not in fields
-    columns: ['jumper','volunteer_name','preferred_jobs','avoid_jobs'],
+    // volunteer_name is display-only (derived from players) — not in fields.
+    // DVE: jobs have no job_id, and the allocator reads preferred_job (singular)
+    // and avoid_jobs (plural) as semicolon-delimited job NAMES — so the pickers
+    // key on job_name and persist to those exact fields.
+    columns: ['jumper','volunteer_name','preferred_job','avoid_jobs'],
     fields: [
       { name: 'jumper',        label: 'Jumper #', type: 'text',          required: true  },
-      { name: 'preferred_jobs', label: 'Prefers', type: 'tag-picker-ref',
-        refType: 'jobs', refPk: 'job_id', refLabel: 'job_name',          required: false },
+      { name: 'preferred_job', label: 'Prefers', type: 'tag-picker-ref',
+        refType: 'jobs', refPk: 'job_name', refLabel: 'job_name',        required: false },
       { name: 'avoid_jobs',    label: 'Avoids',   type: 'tag-picker-ref',
-        refType: 'jobs', refPk: 'job_id', refLabel: 'job_name',          required: false },
+        refType: 'jobs', refPk: 'job_name', refLabel: 'job_name',        required: false },
     ],
   },
 };
@@ -2953,8 +2583,9 @@ async function fetchDataRecords(type) {
       _dataRecords[type] = (data?.volunteers?.eligible || []).map(v => ({
         jumper:         String(v.jumper),
         volunteer_name: nameByJumper[String(v.jumper)] || v.volunteer || '',
-        preferred_job:  (v.preferred_jobs || []).join(', '),
-        avoid_jobs:     (v.avoid_jobs     || []).join(', '),
+        // DVE: canonical allocator format — semicolon-joined job NAMES.
+        preferred_job:  (v.preferred_jobs || []).join(';'),
+        avoid_jobs:     (v.avoid_jobs     || []).join(';'),
       }));
     }
   } else {
@@ -2998,11 +2629,13 @@ function renderDataSubpanelContent(type) {
   const cols = schema.columns;
   const pk = schema.pk;
 
-  const rows = records.map(rec => {
+  const rows = records.map((rec, index) => {
     const cells = cols.map(col =>
       `<td>${escHtml(String(rec[col] ?? ''))}</td>`
     ).join('');
-    const id = encodeURIComponent(rec[pk] ?? '');
+    // DJE: stable row identity — falls back to the row index when the pk is
+    // absent (jobs have no job_id) so every Edit opens its OWN row.
+    const id = encodeRowRef(rec, schema, index);
     return `<tr>
       ${cells}
       <td class="data-row-actions">
@@ -3096,7 +2729,9 @@ function initTagPickers(dlg) {
     dropdown.addEventListener('click', e => {
       const opt = e.target.closest('.tag-option');
       if (!opt) return;
-      const pk = Number(opt.dataset.pk);
+      // DVE: keep the ref key as-is (a job_name string). Coercing to Number
+      // produced NaN for name keys and was the root of the comma garbage.
+      const pk = opt.dataset.pk;
       const label = opt.textContent;
       const ids = getIds();
       if (!ids.includes(pk)) {
@@ -3122,13 +2757,16 @@ function initTagPickers(dlg) {
 async function openDataDialog(type, idEncoded = null) {
   const schema = DATA_SCHEMAS[type];
   const isEdit = idEncoded !== null;
-  const id = idEncoded ? decodeURIComponent(idEncoded) : null;
+  // DJE: resolve the EXACT record the Edit button belongs to (index-safe).
   const existing = isEdit
-    ? (_dataRecords[type] || []).find(r => String(r[schema.pk]) === id)
+    ? resolveRecordForEdit(_dataRecords[type] || [], schema, idEncoded)
     : null;
 
-  // Pre-load any ref tables needed by select-ref fields
-  const refTypes = [...new Set(schema.fields.filter(f => f.type === 'select-ref').map(f => f.refType))];
+  // Pre-load any ref tables needed by select-ref AND tag-picker-ref fields
+  // (DVE: the jobs ref table must be present so volunteer-pref pills resolve).
+  const refTypes = [...new Set(
+    schema.fields.filter(f => f.type === 'select-ref' || f.type === 'tag-picker-ref').map(f => f.refType)
+  )];
   await Promise.all(refTypes.map(rt => {
     if (!_dataRecords[rt]) return fetchDataRecords(rt);
     return Promise.resolve();
@@ -3173,9 +2811,10 @@ async function openDataDialog(type, idEncoded = null) {
     }
     if (f.type === 'tag-picker-ref') {
       const refRecords = _dataRecords[f.refType] || [];
-      const existingIds = Array.isArray(existing?.[f.name]) ? existing[f.name] : [];
+      // DVE: normalise the stored value (a ;-string or array) into clean job names.
+      const existingIds = normalizeJobNames(existing?.[f.name], refRecords);
       const pillsHtml = existingIds.map(id => {
-        const rec = refRecords.find(r => r[f.refPk] === id);
+        const rec = refRecords.find(r => String(r[f.refPk]) === String(id));
         const label = rec ? escHtml(String(rec[f.refLabel] ?? id)) : String(id);
         return `<span class="tag-pill" data-id="${id}">${label}<button type="button" class="tag-remove" aria-label="Remove ${label}">×</button></span>`;
       }).join('');
@@ -3218,12 +2857,27 @@ async function openDataDialog(type, idEncoded = null) {
   dlg.querySelector('#dataDialogCancel').addEventListener('click', () => dlg.close());
   dlg.addEventListener('close', () => dlg.remove());
 
+  // RLOC-003: in the Rounds dialog, changing the opposition club repopulates the
+  // location select with that club's home grounds (first selected).
+  if (type === 'rounds') {
+    const clubSel = dlg.querySelector('#df-opposition_club_id');
+    const locSel  = dlg.querySelector('#df-location_id');
+    if (clubSel && locSel) {
+      clubSel.addEventListener('change', () => {
+        const grounds = homeGroundsForClub(_dataRecords['locations'], clubSel.value);
+        locSel.innerHTML = '<option value="">— none —</option>' + grounds.map((g, i) =>
+          `<option value="${escHtml(String(g.location_id))}"${i === 0 ? ' selected' : ''}>${escHtml(String(g.display_name ?? g.location_id))}</option>`
+        ).join('');
+      });
+    }
+  }
+
   dlg.querySelector('#dataDialogSave').addEventListener('click', async () => {
-    await submitDataForm(type, isEdit, id, dlg, schema);
+    await submitDataForm(type, isEdit, idEncoded, dlg, schema);
   });
 }
 
-async function submitDataForm(type, isEdit, id, dlg, schema) {
+async function submitDataForm(type, isEdit, idEncoded, dlg, schema) {
   const form = dlg.querySelector('#dataDialogForm');
   const errEl = dlg.querySelector('#dataDialogError');
   errEl.classList.add('hidden');
@@ -3235,7 +2889,11 @@ async function submitDataForm(type, isEdit, id, dlg, schema) {
     const el = form.querySelector(`[name="${f.name}"]`);
     if (!el) return;
     if (f.type === 'tag-picker-ref') {
-      try { body[f.name] = JSON.parse(el.value || '[]'); } catch { body[f.name] = []; }
+      // DVE: store the canonical semicolon-joined job NAMES the allocator reads
+      // (never JSON / comma garbage).
+      let picked = [];
+      try { picked = JSON.parse(el.value || '[]'); } catch { picked = []; }
+      body[f.name] = serializeJobNames(picked);
     } else {
       body[f.name] = el.value;
     }
@@ -3269,7 +2927,10 @@ async function submitDataForm(type, isEdit, id, dlg, schema) {
   }
 
   if (isEdit) {
-    const idx = (_dataRecords[type] || []).findIndex(r => String(r[pk]) === id);
+    // DJE: resolve the SAME record the dialog was opened from (index-safe), then
+    // update it in place by identity.
+    const record = resolveRecordForEdit(_dataRecords[type] || [], schema, idEncoded);
+    const idx = record ? (_dataRecords[type] || []).indexOf(record) : -1;
     if (idx >= 0) _dataRecords[type][idx] = { ..._dataRecords[type][idx], ...body };
   } else {
     if (!_dataRecords[type]) _dataRecords[type] = [];
@@ -3318,12 +2979,13 @@ function confirmDataDelete(type, idEncoded, btn) {
 }
 
 async function executeDataDelete(type, idEncoded, rowEl, confirmBtn) {
-  // Delete from in-memory cache and update store
+  // Delete from in-memory cache and update store. DJE: resolve the exact record
+  // (index-safe) and remove it by identity so pk-less rows delete correctly.
   const schema = DATA_SCHEMAS[type];
-  const id = decodeURIComponent(idEncoded);
-  _dataRecords[type] = (_dataRecords[type] || []).filter(
-    r => String(r[schema.pk]) !== id
-  );
+  const record = resolveRecordForEdit(_dataRecords[type] || [], schema, idEncoded);
+  if (record) {
+    _dataRecords[type] = (_dataRecords[type] || []).filter(r => r !== record);
+  }
   if (type !== 'volunteers') {
     dispatch({ type: 'update-reference-data', payload: { key: type, records: _dataRecords[type] } });
   }

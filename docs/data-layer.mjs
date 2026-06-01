@@ -128,6 +128,12 @@ export class MockAllocator {
 
 // ── Factory ──────────────────────────────────────────────────────────────────
 
+// Three operating modes:
+//   user  — IdbPersistence + null network + SpaAllocator  (offline-first, no server calls)
+//   admin — IdbPersistence + FetchNetwork + SpaAllocator  (requires fetchFn or globalThis.fetch)
+//   test  — MockPersistence + MockNetwork + MockAllocator  (injected by test harness)
+//
+// No explicit mode → same as admin (preserves backward-compat for production index.html call).
 export function createDataLayer({ mode, idb, allocator, fetchFn, fixtures } = {}) {
   const fetchImpl = fetchFn || (typeof fetch !== 'undefined' ? fetch.bind(globalThis) : null);
 
@@ -136,6 +142,14 @@ export function createDataLayer({ mode, idb, allocator, fetchFn, fixtures } = {}
       persistence: new MockPersistence(),
       network:     new MockNetwork(fixtures || {}),
       allocator:   new MockAllocator(),
+    };
+  }
+
+  if (mode === 'user') {
+    return {
+      persistence: new IdbPersistence(idb || null),
+      network:     null,
+      allocator:   allocator ? new SpaAllocator(allocator) : null,
     };
   }
 

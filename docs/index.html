@@ -11,7 +11,7 @@
 <body data-skin="dark">
 
 <!-- ── Loading ───────────────────────────────────────────────── -->
-<div id="loading">
+<div id="loading" role="status" aria-busy="true" aria-live="polite">
   <div class="spinner"></div>
   <p>Loading roster data…</p>
 </div>
@@ -261,7 +261,7 @@
                   <div class="print-preview" id="printPreview"></div>
                 </div>
                 <div id="printBtn" style="margin-top:8px">
-                  <button class="btn" onclick="window.print()">
+                  <button class="btn" data-action="print">
                     <svg viewBox="0 0 16 16" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round"><path d="M4 5V2h8v3"/><rect x="1" y="5" width="14" height="8" rx="1"/><path d="M4 13v3h8v-3"/></svg>
                     Print A4
                   </button>
@@ -294,6 +294,7 @@
               Edit values
             </button>
             <button class="btn" id="btnConfirmRound">Confirm Round</button>
+            <button class="btn" id="btnLockRound">🔒 Lock (match done)</button>
           </div>
         </div>
       </div>
@@ -308,7 +309,7 @@
         </div>
       </div>
       <div class="vol-search-wrap">
-        <input class="vol-search" type="search" id="volSearch" placeholder="Search volunteers…">
+        <input class="vol-search" type="search" id="volSearch" aria-label="Search volunteers" placeholder="Search volunteers…">
       </div>
       <div class="vol-table-wrap">
         <table class="vol-table" id="volTable">
@@ -370,14 +371,15 @@
       <div class="settings-section">
         <h3>My Team</h3>
         <div class="settings-row">
-          <span class="settings-label">Club</span>
-          <select class="settings-select" id="settingsClub">
+          <span class="settings-label" id="settingsClubLabel">Club</span>
+          <select class="settings-select" id="settingsClub" aria-labelledby="settingsClubLabel">
             <option value="">— select club —</option>
           </select>
         </div>
         <div class="settings-row">
-          <span class="settings-label">Team name</span>
+          <span class="settings-label" id="settingsTeamNameLabel">Team name</span>
           <input class="settings-input" type="text" id="settingsTeamName"
+                 aria-labelledby="settingsTeamNameLabel"
                  placeholder="e.g. Vultures Red">
         </div>
         <p style="font-size:10px;color:var(--muted);margin-top:8px;line-height:1.5">
@@ -389,26 +391,35 @@
       <div class="settings-section">
         <h3>Appearance</h3>
         <div class="settings-row">
-          <span class="settings-label">Theme</span>
-          <div class="skin-switcher">
-            <button class="skin-btn active" data-skin="dark"     title="Dark Terminal"    onclick="setSkin('dark')"></button>
-            <button class="skin-btn"        data-skin="forest"   title="Forest Floor"     onclick="setSkin('forest')"></button>
-            <button class="skin-btn"        data-skin="sunset"   title="Sunset"           onclick="setSkin('sunset')"></button>
-            <button class="skin-btn"        data-skin="nautical" title="Nighttime at Sea" onclick="setSkin('nautical')"></button>
-            <button class="skin-btn"        data-skin="cobalt"        title="Cobalt"           onclick="setSkin('cobalt')"></button>
-            <button class="skin-btn"        data-skin="night-vision"  title="Night Vision"     onclick="setSkin('night-vision')"></button>
-            <button class="skin-btn"        data-skin="native"        title="Native iOS"       onclick="setSkin('native')"></button>
-            <button class="skin-btn"        data-skin="chrome"        title="Chrome"           onclick="setSkin('chrome')"></button>
-            <button class="skin-btn"        data-skin="sports"        title="Sports"           onclick="setSkin('sports')"></button>
-            <button class="skin-btn"        data-skin="parallax"      title="Parallax"         onclick="setSkin('parallax')"></button>
-            <button class="skin-btn"        data-skin="forest-shadows" title="Forest Shadows"  onclick="setSkin('forest-shadows')"></button>
-            <button class="skin-btn"        data-skin="saturn"              title="Saturn"             onclick="setSkin('saturn')"></button>
-            <button class="skin-btn"        data-skin="andres-de-poitrein"  title="Andrés de Poitrein"  onclick="setSkin('andres-de-poitrein')"></button>
+          <label class="settings-label" for="skinPicker">Colour theme</label>
+          <select class="settings-select" id="skinPicker" data-action="set-skin-select">
+            <option value="dark">Dark Terminal</option>
+            <option value="forest">Forest Floor</option>
+            <option value="sunset">Sunset</option>
+            <option value="nautical">Nighttime at Sea</option>
+            <option value="cobalt">Cobalt</option>
+            <option value="night-vision">Night Vision</option>
+            <option value="native">Native iOS</option>
+            <option value="chrome">Chrome</option>
+            <option value="sports">Sports</option>
+            <option value="parallax">Parallax</option>
+            <option value="forest-shadows">Forest Shadows</option>
+            <option value="saturn">Saturn</option>
+            <option value="andres-de-poitrein">Andrés de Poitrein</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label" id="densityLabel">Density</span>
+          <div class="density-toggle" role="group" aria-labelledby="densityLabel">
+            <button class="density-btn" data-action="set-density" data-density="spacious">Spacious</button>
+            <button class="density-btn" data-action="set-density" data-density="moderate">Moderate</button>
+            <button class="density-btn" data-action="set-density" data-density="dense">Dense</button>
           </div>
         </div>
         <div class="settings-row">
-          <span class="settings-label">Print footer note</span>
+          <span class="settings-label" id="printFooterLabel">Print footer note</span>
           <input class="settings-input" type="text" id="printFooterInput"
+            aria-labelledby="printFooterLabel"
             placeholder="&#x2020; Stick this to the canteen wall">
         </div>
         <p style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.5">
@@ -455,6 +466,24 @@
         <p style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.5">
           Load a <code>tm-data-*.json</code> exported from any FootyManager instance.
           <strong>Replaces your current local data.</strong>
+        </p>
+      </div>
+
+      <div class="settings-section settings-section--danger" id="settingsDangerSection">
+        <h3>Danger</h3>
+        <div class="settings-row">
+          <span class="settings-label">Delete all data</span>
+          <button class="btn btn-danger" id="btnDeleteData" disabled>
+            <svg viewBox="0 0 16 16"><path d="M3 4h10M6 4V2h4v2M5 4v9a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1V4"/><path d="M7 7v4M9 7v4"/></svg>
+            Delete Data
+          </button>
+          <button class="btn btn-danger-confirm" id="btnConfirmDeleteData" style="display:none">
+            Yes, delete everything
+          </button>
+        </div>
+        <p id="deleteDataHint" style="font-size:10px;color:var(--error,#e55);margin-top:8px;line-height:1.5">
+          Export your data first using <strong>EXPORT TM DATA</strong> above, then this button will unlock.
+          Deleting resets the app to the setup wizard — all local data will be lost.
         </p>
       </div>
 
@@ -589,11 +618,11 @@
   </div><!-- /#content -->
 
   <!-- ── Offline mode banners ─────────────────────────────── -->
-  <div id="offline-unavailable-banner" class="offline-banner offline-unavailable" style="display:none">
+  <div id="offline-unavailable-banner" class="offline-banner offline-unavailable" style="display:none" role="status" aria-live="polite">
     <span>Offline mode unavailable — using server only</span>
   </div>
 
-  <div id="unsynced-writes-banner" class="offline-banner unsynced-writes" style="display:none">
+  <div id="unsynced-writes-banner" class="offline-banner unsynced-writes" style="display:none" role="status" aria-live="polite">
     <div class="unsynced-banner-content">
       <span><strong id="unsynced-count">50+</strong> unsynced changes — reconnect to save</span>
       <div class="unsynced-banner-actions">
@@ -618,17 +647,19 @@
 <div id="snapshotToast"></div>
 
 <!-- ── Volunteer summary popup (US-08) ─────────────────────── -->
-<div id="volPopupBackdrop" class="vol-popup-backdrop hidden" onclick="closeVolPopup()"></div>
+<div id="volPopupBackdrop" class="vol-popup-backdrop hidden" data-action="close-vol-popup"></div>
 <div id="volPopup" class="vol-popup hidden" role="dialog" aria-modal="true">
-  <button class="vol-popup-close" onclick="closeVolPopup()">&#x2715;</button>
+  <button class="vol-popup-close" data-action="close-vol-popup" aria-label="Close volunteer details">&#x2715;</button>
   <div id="volPopupContent"></div>
 </div>
 
 <!-- ── Volunteer swap overlay (SPA-RD-10) ──────────────────── -->
-<div id="volSwapBackdrop" class="vol-popup-backdrop hidden" onclick="closeVolSwap()"></div>
+<div id="volSwapBackdrop" class="vol-popup-backdrop hidden" data-action="close-vol-swap"></div>
 <div id="volSwapOverlay" class="vol-popup hidden" role="dialog" aria-modal="true">
-  <button class="vol-swap-close" onclick="closeVolSwap()">&#x2715;</button>
+  <button class="vol-swap-close" data-action="close-vol-swap" aria-label="Close volunteer swap">&#x2715;</button>
   <h3 id="volSwapTitle" class="vol-swap-title"></h3>
+  <input id="volSwapSearch" class="vol-swap-search" type="search" data-action="filter-vol-swap"
+         aria-label="Filter volunteers by name" placeholder="Type a name to filter…">
   <div id="volSwapList" class="vol-swap-list"></div>
 </div>
 
@@ -641,6 +672,18 @@
 </div>
 
 
+<!--
+  @front-end bridge (CLM-008)
+  This module block runs before index.js (also a module) and publishes the
+  shared singletons index.js needs onto `window`:
+    window.__idb        — the IndexedDB persistence module (idb.js)
+    window.__allocator  — the pure allocation engine (allocator.js)
+    window.__showWizard — the onboarding wizard entry point (wizard.js)
+    window.__dataLayer  — the composed persistence/network/allocator boundary
+  Contract: index.js reads these LAZILY at call time (never at module-eval
+  time), so load order between the two module scripts cannot break them.
+  Tests pre-assign window.__dataLayer via page.addInitScript() to inject mocks.
+-->
 <script type="module">
   import * as idb from './idb.js';
   import * as allocator from './allocator.js';
@@ -649,12 +692,10 @@
   window.__idb = idb;
   window.__allocator = allocator;
   window.__showWizard = showWizard;
-  // Compose the data layer. Tests can pre-assign window.__dataLayer via
-  // page.addInitScript() before navigation to inject mocks.
   if (!window.__dataLayer) {
     window.__dataLayer = createDataLayer({ idb, allocator });
   }
 </script>
-<script src="index.js"></script>
+<script type="module" src="index.js"></script>
 </body>
 </html>

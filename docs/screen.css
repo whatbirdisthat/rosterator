@@ -10,7 +10,7 @@
   --border2:    #38383f;
   --text:       #e8e8f0;
   --text2:      #b0b0c0;
-  --muted:      #7a7a8a;
+  --muted:      #878796;
   --accent:     #7fffb2;
   --accent2:    #3af080;
   --warn:       #f5c842;
@@ -39,6 +39,20 @@
   --dot-scheduled: #5a8fff;
   --hero-bg: #17171b;
   --hero-border: #2a2a32;
+  /* HI [27] CSS-004/005: status, badge, radius, bye tokens */
+  --danger: var(--error);
+  --ok: var(--confirmed);
+  --info: var(--scheduled);
+  --warn-bg: var(--pill-warn-bg);
+  --warn-fg: var(--pill-warn-fg);
+  --home-badge-bg: var(--pill-warn-bg);
+  --home-badge-fg: var(--pill-warn-fg);
+  --radius-lg: calc(var(--radius) + 4px);
+  --bye-bg: var(--bg3);
+  --bye-fg: var(--muted);
+  --bye-border: var(--border2);
+  /* RLK [round-lock]: completed/locked status colour */
+  --completed: var(--tag-b);
 }
 
 [data-skin="forest"] {
@@ -49,7 +63,7 @@
   --border2:    #b8b09e;
   --text:       #2a2318;
   --text2:      #4a3e2c;
-  --muted:      #8a7d68;
+  --muted:      #655b4b;
   --accent:     #3d6e3a;
   --accent2:    #2f5429;
   --warn:       #b36a00;
@@ -79,6 +93,17 @@
   --hero-bg: #e8e3d8;
   --hero-border: #c8c2b4;
   --bye-bg:     #2f5429; --bye-fg: #f0ede6; --bye-border: #1f3a18;
+  /* HI [27] CSS-004/005: status, badge, radius, bye tokens */
+  --danger: var(--error);
+  --ok: var(--confirmed);
+  --info: var(--scheduled);
+  --warn-bg: var(--pill-warn-bg);
+  --warn-fg: var(--pill-warn-fg);
+  --home-badge-bg: var(--pill-warn-bg);
+  --home-badge-fg: var(--pill-warn-fg);
+  --radius-lg: calc(var(--radius) + 4px);
+  /* RLK [round-lock]: completed/locked status colour */
+  --completed: var(--tag-b);
 }
 
 [data-skin="sunset"] {
@@ -89,7 +114,7 @@
   --border2:    #4a3860;
   --text:       #f0e8f8;
   --text2:      #c8b8e0;
-  --muted:      #9078b0;
+  --muted:      #9b86b8;
   --accent:     #ff8c60;
   --accent2:    #ff6a38;
   --warn:       #ffc840;
@@ -118,6 +143,20 @@
   --dot-scheduled: #80a8ff;
   --hero-bg: #221830;
   --hero-border: #3a2a50;
+  /* HI [27] CSS-004/005: status, badge, radius, bye tokens */
+  --danger: var(--error);
+  --ok: var(--confirmed);
+  --info: var(--scheduled);
+  --warn-bg: var(--pill-warn-bg);
+  --warn-fg: var(--pill-warn-fg);
+  --home-badge-bg: var(--pill-warn-bg);
+  --home-badge-fg: var(--pill-warn-fg);
+  --radius-lg: calc(var(--radius) + 4px);
+  --bye-bg: var(--bg3);
+  --bye-fg: var(--muted);
+  --bye-border: var(--border2);
+  /* RLK [round-lock]: completed/locked status colour */
+  --completed: var(--tag-b);
 }
 
 [data-skin="nautical"] {
@@ -128,7 +167,7 @@
   --border2:    #1f3550;
   --text:       #d8e8f8;
   --text2:      #a0bcd8;
-  --muted:      #507090;
+  --muted:      #728ba5;
   --accent:     #38c8f0;
   --accent2:    #1aa8d8;
   --warn:       #f0c040;
@@ -157,6 +196,20 @@
   --dot-scheduled: #6090ff;
   --hero-bg: #0b1625;
   --hero-border: #172840;
+  /* HI [27] CSS-004/005: status, badge, radius, bye tokens */
+  --danger: var(--error);
+  --ok: var(--confirmed);
+  --info: var(--scheduled);
+  --warn-bg: var(--pill-warn-bg);
+  --warn-fg: var(--pill-warn-fg);
+  --home-badge-bg: var(--pill-warn-bg);
+  --home-badge-fg: var(--pill-warn-fg);
+  --radius-lg: calc(var(--radius) + 4px);
+  --bye-bg: var(--bg3);
+  --bye-fg: var(--muted);
+  --bye-border: var(--border2);
+  /* RLK [round-lock]: completed/locked status colour */
+  --completed: var(--tag-b);
 }
 
 [data-skin="native"] {
@@ -168,7 +221,7 @@
   --border2:    #58585c;
   --text:       #ffffff;
   --text2:      #ababb5;
-  --muted:      #636366;
+  --muted:      #a5a5a7;
   --accent:     #0a84ff;
   --accent2:    #0071e3;
   --warn:       #ff9f0a;
@@ -197,6 +250,20 @@
   --dot-scheduled: #64d2ff;
   --hero-bg: #1c1c1e;
   --hero-border: #48484a;
+  /* HI [27] CSS-004/005: status, badge, radius, bye tokens */
+  --danger: var(--error);
+  --ok: var(--confirmed);
+  --info: var(--scheduled);
+  --warn-bg: var(--pill-warn-bg);
+  --warn-fg: var(--pill-warn-fg);
+  --home-badge-bg: var(--pill-warn-bg);
+  --home-badge-fg: var(--pill-warn-fg);
+  --radius-lg: calc(var(--radius) + 4px);
+  --bye-bg: var(--bg3);
+  --bye-fg: var(--muted);
+  --bye-border: var(--border2);
+  /* RLK [round-lock]: completed/locked status colour */
+  --completed: var(--tag-b);
 }
 
 /* iOS system fills for native theme */
@@ -225,7 +292,7 @@
   --border2:    #005000;
   --text:       #80ff80;
   --text2:      #4db84d;
-  --muted:      #2d6b2d;
+  --muted:      #619061;
   --accent:     #39ff14;
   --accent2:    #1dcc00;
   --warn:       #ccff00;
@@ -254,6 +321,20 @@
   --dot-scheduled: #00e5cc;
   --hero-bg: #001600;
   --hero-border: #003800;
+  /* HI [27] CSS-004/005: status, badge, radius, bye tokens */
+  --danger: var(--error);
+  --ok: var(--confirmed);
+  --info: var(--scheduled);
+  --warn-bg: var(--pill-warn-bg);
+  --warn-fg: var(--pill-warn-fg);
+  --home-badge-bg: var(--pill-warn-bg);
+  --home-badge-fg: var(--pill-warn-fg);
+  --radius-lg: calc(var(--radius) + 4px);
+  --bye-bg: var(--bg3);
+  --bye-fg: var(--muted);
+  --bye-border: var(--border2);
+  /* RLK [round-lock]: completed/locked status colour */
+  --completed: var(--tag-b);
 }
 
 [data-skin="cobalt"] {
@@ -264,7 +345,7 @@
   --border2:    #264065;
   --text:       #dce8ff;
   --text2:      #8ab0d8;
-  --muted:      #4a6e90;
+  --muted:      #7691ab;
   --accent:     #4d8fff;
   --accent2:    #2265d4;
   --warn:       #ffcc40;
@@ -293,6 +374,20 @@
   --dot-scheduled: #70baff;
   --hero-bg: #0d1a30;
   --hero-border: #1c3050;
+  /* HI [27] CSS-004/005: status, badge, radius, bye tokens */
+  --danger: var(--error);
+  --ok: var(--confirmed);
+  --info: var(--scheduled);
+  --warn-bg: var(--pill-warn-bg);
+  --warn-fg: var(--pill-warn-fg);
+  --home-badge-bg: var(--pill-warn-bg);
+  --home-badge-fg: var(--pill-warn-fg);
+  --radius-lg: calc(var(--radius) + 4px);
+  --bye-bg: var(--bg3);
+  --bye-fg: var(--muted);
+  --bye-border: var(--border2);
+  /* RLK [round-lock]: completed/locked status colour */
+  --completed: var(--tag-b);
 }
 
 [data-skin="chrome"] {
@@ -304,7 +399,7 @@
   --border2:    #70747a;
   --text:       #e8eaed;
   --text2:      #bdc1c6;
-  --muted:      #9aa0a6;
+  --muted:      #babec2;
   --accent:     #8ab4f8;
   --accent2:    #669df6;
   --warn:       #fdd663;
@@ -333,6 +428,20 @@
   --dot-scheduled: #8ab4f8;
   --hero-bg: #404144;
   --hero-border: #5f6368;
+  /* HI [27] CSS-004/005: status, badge, radius, bye tokens */
+  --danger: var(--error);
+  --ok: var(--confirmed);
+  --info: var(--scheduled);
+  --warn-bg: var(--pill-warn-bg);
+  --warn-fg: var(--pill-warn-fg);
+  --home-badge-bg: var(--pill-warn-bg);
+  --home-badge-fg: var(--pill-warn-fg);
+  --radius-lg: calc(var(--radius) + 4px);
+  --bye-bg: var(--bg3);
+  --bye-fg: var(--muted);
+  --bye-border: var(--border2);
+  /* RLK [round-lock]: completed/locked status colour */
+  --completed: var(--tag-b);
 }
 
 /* Chrome/Material fills for chrome theme */
@@ -361,7 +470,7 @@
   --border2:    #7a5030;
   --text:       #f0e8d8;
   --text2:      #d0b898;
-  --muted:      #907a60;
+  --muted:      #a4927d;
   --accent:     #e06820;
   --accent2:    #c05010;
   --warn:       #d4a020;
@@ -390,6 +499,20 @@
   --dot-scheduled: #4a78c0;
   --hero-bg: #2e1a0a;
   --hero-border: #5a3820;
+  /* HI [27] CSS-004/005: status, badge, radius, bye tokens */
+  --danger: var(--error);
+  --ok: var(--confirmed);
+  --info: var(--scheduled);
+  --warn-bg: var(--pill-warn-bg);
+  --warn-fg: var(--pill-warn-fg);
+  --home-badge-bg: var(--pill-warn-bg);
+  --home-badge-fg: var(--pill-warn-fg);
+  --radius-lg: calc(var(--radius) + 4px);
+  --bye-bg: var(--bg3);
+  --bye-fg: var(--muted);
+  --bye-border: var(--border2);
+  /* RLK [round-lock]: completed/locked status colour */
+  --completed: var(--tag-b);
 }
 
 [data-skin="parallax"] {
@@ -400,7 +523,7 @@
   --border2:    #303055;
   --text:       #dcdcf0;
   --text2:      #9898c0;
-  --muted:      #585878;
+  --muted:      #84849c;
   --accent:     #9b8fff;
   --accent2:    #7a68e8;
   --warn:       #e8c060;
@@ -429,6 +552,20 @@
   --dot-scheduled: #6898e0;
   --hero-bg: #0f0f1e;
   --hero-border: #242440;
+  /* HI [27] CSS-004/005: status, badge, radius, bye tokens */
+  --danger: var(--error);
+  --ok: var(--confirmed);
+  --info: var(--scheduled);
+  --warn-bg: var(--pill-warn-bg);
+  --warn-fg: var(--pill-warn-fg);
+  --home-badge-bg: var(--pill-warn-bg);
+  --home-badge-fg: var(--pill-warn-fg);
+  --radius-lg: calc(var(--radius) + 4px);
+  --bye-bg: var(--bg3);
+  --bye-fg: var(--muted);
+  --bye-border: var(--border2);
+  /* RLK [round-lock]: completed/locked status colour */
+  --completed: var(--tag-b);
 }
 
 [data-skin="forest-shadows"] {
@@ -439,7 +576,7 @@
   --border2:    #2a4430;
   --text:       #d0e8d0;
   --text2:      #88a888;
-  --muted:      #507050;
+  --muted:      #779077;
   --accent:     #4cd87a;
   --accent2:    #2cb858;
   --warn:       #d4a840;
@@ -468,6 +605,20 @@
   --dot-scheduled: #6ab0e0;
   --hero-bg: #0d1a0d;
   --hero-border: #1e3220;
+  /* HI [27] CSS-004/005: status, badge, radius, bye tokens */
+  --danger: var(--error);
+  --ok: var(--confirmed);
+  --info: var(--scheduled);
+  --warn-bg: var(--pill-warn-bg);
+  --warn-fg: var(--pill-warn-fg);
+  --home-badge-bg: var(--pill-warn-bg);
+  --home-badge-fg: var(--pill-warn-fg);
+  --radius-lg: calc(var(--radius) + 4px);
+  --bye-bg: var(--bg3);
+  --bye-fg: var(--muted);
+  --bye-border: var(--border2);
+  /* RLK [round-lock]: completed/locked status colour */
+  --completed: var(--tag-b);
 }
 
 [data-skin="saturn"] {
@@ -478,7 +629,7 @@
   --border2:    #3c2c14;
   --text:       #f0dfa0;
   --text2:      #c09840;
-  --muted:      #806030;
+  --muted:      #997e58;
   --accent:     #f0b020;
   --accent2:    #c88010;
   --warn:       #e08828;
@@ -507,6 +658,20 @@
   --dot-scheduled: #60a8e0;
   --hero-bg: #140e06;
   --hero-border: #2c1e0a;
+  /* HI [27] CSS-004/005: status, badge, radius, bye tokens */
+  --danger: var(--error);
+  --ok: var(--confirmed);
+  --info: var(--scheduled);
+  --warn-bg: var(--pill-warn-bg);
+  --warn-fg: var(--pill-warn-fg);
+  --home-badge-bg: var(--pill-warn-bg);
+  --home-badge-fg: var(--pill-warn-fg);
+  --radius-lg: calc(var(--radius) + 4px);
+  --bye-bg: var(--bg3);
+  --bye-fg: var(--muted);
+  --bye-border: var(--border2);
+  /* RLK [round-lock]: completed/locked status colour */
+  --completed: var(--tag-b);
 }
 
 [data-skin="andres-de-poitrein"] {
@@ -517,7 +682,7 @@
   --border2:    #40404e;
   --text:       #ccc8d8;
   --text2:      #8c88a0;
-  --muted:      #585668;
+  --muted:      #92919c;
   --accent:     #a88bc8;
   --accent2:    #8868a8;
   --warn:       #c89050;
@@ -546,6 +711,20 @@
   --dot-scheduled: #7890c8;
   --hero-bg: #202028;
   --hero-border: #32323e;
+  /* HI [27] CSS-004/005: status, badge, radius, bye tokens */
+  --danger: var(--error);
+  --ok: var(--confirmed);
+  --info: var(--scheduled);
+  --warn-bg: var(--pill-warn-bg);
+  --warn-fg: var(--pill-warn-fg);
+  --home-badge-bg: var(--pill-warn-bg);
+  --home-badge-fg: var(--pill-warn-fg);
+  --radius-lg: calc(var(--radius) + 4px);
+  --bye-bg: var(--bg3);
+  --bye-fg: var(--muted);
+  --bye-border: var(--border2);
+  /* RLK [round-lock]: completed/locked status colour */
+  --completed: var(--tag-b);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -553,6 +732,15 @@
    ═══════════════════════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
+
+/* ── Focus visibility (ACC-002, WCAG 2.4.7) ────────────────────────────────
+   Keyboard focus always shows a visible ring; pointer focus stays quiet.
+   Element rules no longer set a bare outline override, so nothing out-specifies this. */
+:focus:not(:focus-visible) { outline: 0; }
+:focus-visible {
+  outline: 2px solid var(--accent, #7fffb2);
+  outline-offset: 2px;
+}
 body {
   background: var(--bg); color: var(--text);
   font-family: var(--font-body); font-size: var(--font-size);
@@ -841,6 +1029,8 @@ body {
 .status-pill.ok   { background: var(--pill-ok-bg);  color: var(--pill-ok-fg);  border: 1px solid var(--pill-ok-fg);  }
 .status-pill.warn { background: var(--pill-warn-bg); color: var(--pill-warn-fg);border: 1px solid var(--pill-warn-fg);}
 .status-pill.err  { background: var(--pill-err-bg);  color: var(--pill-err-fg); border: 1px solid var(--pill-err-fg); }
+/* RLK: completed/locked round pill — distinct from confirmed (ok) and scheduled (warn) */
+.status-pill.completed { background: var(--bg3); color: var(--completed); border: 1px solid var(--completed); }
 .ha-pill { display:inline-block; padding:2px 8px; border-radius:var(--radius); font-size:10px; font-weight:700; letter-spacing:.06em; white-space:nowrap; }
 .ha-pill.home { background: var(--pill-ok-bg);   color: var(--pill-ok-fg);   border: 1px solid var(--pill-ok-fg);   }
 .ha-pill.away { background: var(--pill-warn-bg); color: var(--pill-warn-fg); border: 1px solid var(--pill-warn-fg); }
@@ -902,7 +1092,7 @@ body {
 .skin-btn {
   width: 26px; height: 26px; border-radius: 50%;
   border: 2px solid transparent; cursor: pointer;
-  transition: border-color .15s, transform .15s; outline: none; flex-shrink: 0;
+  transition: border-color .15s, transform .15s; flex-shrink: 0;
 }
 .skin-btn:hover { transform: scale(1.15); }
 .skin-btn.active { border-color: var(--text); }
@@ -1355,7 +1545,7 @@ table.matrix tr.tr-bye:hover td { background: var(--bg2); }
 .vol-search {
   width: 100%; max-width: 360px; background: var(--bg2); border: 1px solid var(--border2);
   color: var(--text); font-family: var(--font-body); font-size: 12px;
-  padding: 8px 14px; border-radius: var(--radius); outline: none;
+  padding: 8px 14px; border-radius: var(--radius);
   transition: border-color .15s;
 }
 .vol-search:focus { border-color: var(--accent); }
@@ -1469,7 +1659,7 @@ table.constraint-table tbody tr:hover td { background: var(--bg2); }
   padding: 5px 10px; font-size: 12px; font-family: var(--font-body); flex: 1; max-width: 260px;
 }
 .settings-select:focus,
-.settings-input:focus { outline: none; border-color: var(--accent); }
+.settings-input:focus { border-color: var(--accent); }
 
 .stat-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap: 10px;
@@ -1498,7 +1688,7 @@ table.constraint-table tbody tr:hover td { background: var(--bg2); }
   padding: 6px 10px; font-size: 13px; font-family: var(--font-body); flex: 1;
 }
 .edit-form select:focus,
-.edit-form input[type="time"]:focus { outline: none; border-color: var(--accent); }
+.edit-form input[type="time"]:focus { border-color: var(--accent); }
 .edit-form-static { font-size: 13px; color: var(--text2); }
 .edit-form-actions { display: flex; gap: 8px; margin-top: 4px; }
 #btnEditRound.btn-editing {
@@ -1858,13 +2048,19 @@ table.constraint-table tbody tr:hover td { background: var(--bg2); }
 
 /* ── Player absence (SPA-LU-11, SPA-LU-12) ────────────────────────────── */
 .lineup-cell-btn.OUT {
-  background: var(--danger, #c0392b);
+  /* Filled "absent" surface: needs a dark red so white text stays ≥4.5:1.
+     --danger is a bright text-accent red (var(--error)) unsuitable as a fill,
+     so this uses an explicit accessible dark red across all skins. */
+  background: #b3261e;
   color: #fff;
   border-color: #922b21;
 }
 
 td.lineup-td-out {
-  opacity: 0.5;
+  /* No opacity dimming here: it composited the white-on-red OUT button down to a
+     failing 3.14:1. The red OUT button is already a sufficient "absent" signal
+     (ACC-004: not colour-alone — it also reads the text "OUT"). */
+  background: rgba(192, 57, 43, 0.06);
 }
 
 /* ── Manual assignment badge (SPA-RD-11) ──────────────────────────────── */
@@ -1985,7 +2181,7 @@ td.lineup-td-out {
   padding: 6px 10px; font-size: 13px; font-family: var(--font-body);
   min-width: 120px;
 }
-.tsp-round-select:focus { outline: none; border-color: var(--accent); }
+.tsp-round-select:focus { border-color: var(--accent); }
 .tsp-empty {
   padding: 24px; text-align: center; color: var(--text2); font-style: italic;
 }
@@ -2102,7 +2298,7 @@ dialog#dataDialog h3 {
   box-sizing: border-box;
 }
 .data-field input:focus, .data-field select:focus {
-  outline: none; border-color: var(--accent);
+ border-color: var(--accent);
 }
 .data-field-error {
   display: block; font-size: 11px; color: var(--error, #e55); margin-top: 3px;
@@ -2324,7 +2520,7 @@ dialog#dataDialog h3 {
   background: transparent;
   color: var(--text, #eee);
   font-size: 0.875rem;
-  outline: none;
+
   padding: 2px 0;
 }
 .tag-dropdown {
@@ -2349,3 +2545,55 @@ dialog#dataDialog h3 {
   color: var(--text, #eee);
 }
 .tag-option:hover { background: var(--bg2, #222); }
+
+/* ── Danger Zone (SPA-DNG) ─────────────────────────────────────── */
+.settings-section--danger { border-color: var(--error, #c0392b); }
+.settings-section--danger h3 { color: var(--error, #c0392b); }
+.btn-danger { color: var(--error, #c0392b); border-color: var(--error, #c0392b); }
+.btn-danger:hover:not(:disabled) { background: var(--error, #c0392b); color: #fff; border-color: transparent; }
+.btn-danger:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-danger-confirm { background: var(--error, #c0392b); color: #fff; border-color: transparent; font-weight: 600; }
+.btn-danger-confirm:hover { background: var(--danger, #922b21); border-color: transparent; }
+
+/* ── Reduced motion (ACC-005, WCAG 2.3.3 / prefers-reduced-motion) ──────────
+   Honour the OS "reduce motion" setting: collapse animations and transitions
+   to near-instant so the infinite loading spinner and panel transitions do not
+   trigger vestibular discomfort. Kept as a single block at file end so it
+   overrides every earlier transition/animation declaration. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Density (ERG-003) ──────────────────────────────────────────────────────
+   Moderate is the default (unchanged spacing). Dense tightens the base font and
+   panel padding; spacious loosens them. Applied via body[data-density]. */
+body[data-density="dense"]    { --font-size: 12px; }
+body[data-density="dense"]    .panel { padding: 12px; }
+body[data-density="dense"]    .settings-row,
+body[data-density="dense"]    .round-card { padding-top: 6px; padding-bottom: 6px; }
+body[data-density="spacious"] { --font-size: 14.5px; }
+body[data-density="spacious"] .panel { padding: 28px; }
+body[data-density="spacious"] .settings-row,
+body[data-density="spacious"] .round-card { padding-top: 14px; padding-bottom: 14px; }
+
+.density-toggle { display: inline-flex; gap: 4px; }
+.density-btn {
+  min-height: 32px; padding: 5px 12px; cursor: pointer;
+  background: var(--bg3); color: var(--text2);
+  border: 1px solid var(--border2); border-radius: var(--radius);
+  font-family: var(--font-body); font-size: 12px;
+}
+.density-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+
+.vol-swap-search {
+  width: 100%; box-sizing: border-box; margin-bottom: 10px;
+  min-height: 40px; padding: 8px 12px;
+  background: var(--bg3); color: var(--text);
+  border: 1px solid var(--border2); border-radius: var(--radius);
+  font-family: var(--font-body); font-size: 14px;
+}

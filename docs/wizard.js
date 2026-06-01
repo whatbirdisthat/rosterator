@@ -1,13 +1,23 @@
 'use strict';
 // USP-020..022, USP-053, USP-060: Onboarding wizard for USER_SPA
 // 4-step progressive flow: Club → Grade → Player count → Team name → "Let's Go!"
+//
+// ═══════════════════════════════════════════════════════════════════════════
+// This file is organised into three bounded sections (WIZ2-003):
+//   • WizardLogic     — pure functions: draft schema, import validation,
+//                       roster/jumper generation, round seeding. No DOM.
+//   • WizardTemplates — functions that produce/inject HTML into the wizard.
+//   • WizardEvents    — functions that wire listeners and drive the flow.
+// The WizardLogic functions are exported for unit testing (wizard-logic.test.mjs).
+// ═══════════════════════════════════════════════════════════════════════════
 
 const DRAFT_KEY = 'footy-wizard-draft';
+const DRAFT_SCHEMA_VERSION = 1;            // WIZ2-004/006/007
 const REQUIRED_IMPORT_KEYS = ['user_team'];
 
-// ── Utilities ─────────────────────────────────────────────────────────────
+// ════════════════════════ WizardLogic (pure, exported) ════════════════════
 
-function escHtml(str) {
+export function escHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -25,22 +35,55 @@ async function fetchJson(url) {
   }
 }
 
-// ── Draft persistence ─────────────────────────────────────────────────────
+// ── Draft persistence (schema-versioned) ──────────────────────────────────
 
-function saveDraft(draft) {
-  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch (_) {}
+// WIZ2-006: every saved draft carries the current schemaVersion.
+export function saveDraft(draft) {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ schemaVersion: DRAFT_SCHEMA_VERSION, ...draft }));
+  } catch (_) {}
 }
 
-function loadDraft() {
+// WIZ2-004/007: a draft with a missing or incompatible schemaVersion is
+// discarded rather than silently resumed into a broken state.
+export function loadDraft() {
   try {
     const raw = localStorage.getItem(DRAFT_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch (_) { return null; }
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (!parsed || parsed.schemaVersion !== DRAFT_SCHEMA_VERSION) {
+      if (parsed) clearDraft();
+      return null;
+    }
+    return parsed;
+  } catch (_) { clearDraft(); return null; }
 }
 
-function clearDraft() {
+export function clearDraft() {
   try { localStorage.removeItem(DRAFT_KEY); } catch (_) {}
 }
+
+// WIZ2-008: seed a round_summary from the fixture template for the chosen grade.
+// Returns [] when the template has no fixtures for that grade (83 of 84 grades),
+// so callers can surface a reassurance message instead of a silent empty season.
+export function seedRoundsForGrade(roundsTemplate, gradeName, clubName) {
+  const club = (clubName || '').toLowerCase();
+  return (roundsTemplate || [])
+    .filter(r => r.grade === gradeName)
+    .map(r => ({
+      round:              r.round,
+      date:               r.date,
+      time:               r.time || '08:45 AM',
+      home_away:          club && r.team1?.toLowerCase().includes(club) ? 'h'
+                        : club && r.team2?.toLowerCase().includes(club) ? 'a'
+                        : '',
+      opposition_club_id: '',
+      location_id:        '',
+      extra_notes:        '',
+    }));
+}
+
+// ════════════════════════ WizardTemplates ═════════════════════════════════
+// Functions below build/inject the wizard's HTML and manage its DOM chrome.
 
 // ── Wizard DOM helpers ────────────────────────────────────────────────────
 
@@ -57,6 +100,17 @@ function hideWizardEl() {
 function setWizardContent(html) {
   const el = document.getElementById('wizardContent');
   if (el) el.innerHTML = html;
+  // WIZ2-001: move focus to the first interactive control of the new screen so
+  // keyboard and screen-reader users land where they can act.
+  focusFirstInteractive(el);
+}
+
+function focusFirstInteractive(container) {
+  if (!container || typeof container.querySelector !== 'function') return;
+  const target = container.querySelector('select, input, button, a[href], [tabindex]:not([tabindex="-1"])');
+  if (target && typeof target.focus === 'function') {
+    requestAnimationFrame(() => target.focus());
+  }
 }
 
 function showWizardError(msg) {
@@ -67,6 +121,7 @@ function showWizardError(msg) {
   const err = document.createElement('p');
   err.className = 'wizard-error';
   err.setAttribute('data-wizard-error', '');
+  err.setAttribute('role', 'alert');   // WIZ2: import errors announced to AT
   err.textContent = msg;
   err.style.cssText = 'color:#e55;margin-top:0.75rem;font-size:0.85rem';
   el.appendChild(err);
@@ -94,11 +149,13 @@ function setWizardChrome({ showBack = false, onBack = null }) {
   if (showBack && onBack) {
     chrome.querySelector('#wizardBackBtn').addEventListener('click', onBack);
   }
-  // Start over always clears draft and restarts
+  // Start over confirms first (WIZ2-011), then clears the draft and restarts.
   chrome.querySelector('#wizardStartOver').addEventListener('click', () => {
-    clearDraft();
-    // Will be re-assigned by the outer showWizard closure — use event to signal
-    document.dispatchEvent(new CustomEvent('wizard-restart'));
+    showConfirmDestructive('Discard your setup progress and start over?', () => {
+      clearDraft();
+      // Will be re-assigned by the outer showWizard closure — use event to signal
+      document.dispatchEvent(new CustomEvent('wizard-restart'));
+    });
   });
 }
 
@@ -107,27 +164,59 @@ function removeWizardChrome() {
   if (chrome) chrome.remove();
 }
 
+// WIZ2-011: a confirm overlay shown before any destructive draft-discard action,
+// so a mis-tap on a phone cannot silently wipe in-progress setup. Rendered as an
+// overlay (not a content replacement) so Cancel leaves the underlying screen intact.
+function showConfirmDestructive(message, onConfirm) {
+  const existing = document.getElementById('wizardConfirm');
+  if (existing) existing.remove();
+  const ov = document.createElement('div');
+  ov.id = 'wizardConfirm';
+  ov.setAttribute('role', 'dialog');
+  ov.setAttribute('aria-modal', 'true');
+  ov.setAttribute('aria-label', 'Confirm discard');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1000';
+  ov.innerHTML = `<div style="background:var(--bg2,#17171b);border:1px solid var(--border,#333);border-radius:8px;padding:20px;max-width:300px;text-align:center">
+      <p style="margin-bottom:16px;font-size:0.9rem">${escHtml(message)}</p>
+      <div style="display:flex;gap:8px">
+        <button id="wizardConfirmYes" class="btn btn-primary" type="button" style="flex:1">Yes, discard</button>
+        <button id="wizardConfirmNo" class="btn" type="button" style="flex:1">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
+  document.getElementById('wizardConfirmYes').addEventListener('click', () => { ov.remove(); onConfirm(); });
+  document.getElementById('wizardConfirmNo').addEventListener('click', () => ov.remove());
+  requestAnimationFrame(() => document.getElementById('wizardConfirmNo')?.focus());
+}
+
 // ── Random name + jumper generation ──────────────────────────────────────
 
-function pickRandom(arr, n) {
+export function pickRandom(arr, n) {
   const shuffled = [...arr].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, n);
 }
 
-function buildRoster(randomNames, count) {
+export function buildRoster(randomNames, count) {
   const names = pickRandom(randomNames, Math.min(count, randomNames.length));
   const jumpers = pickRandom(Array.from({ length: 51 }, (_, i) => i + 1), count);
   return names.map((name, i) => ({ jumper: String(jumpers[i] ?? (i + 1)), name }));
 }
 
+// ════════════════════════ WizardEvents ════════════════════════════════════
+// Functions below wire listeners and drive the step-by-step flow.
+
 // ── Import flow ───────────────────────────────────────────────────────────
 
-function validateImportFile(content) {
+// WIZ2-002: parse + validate an imported file, throwing a human-readable error.
+export function validateImportFile(content) {
   let parsed;
   try {
     parsed = JSON.parse(content);
   } catch (_) {
     throw new Error('Invalid file — could not parse JSON');
+  }
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('Import failed: file is not a team-data object');
   }
   for (const key of REQUIRED_IMPORT_KEYS) {
     if (!(key in parsed)) {
@@ -172,17 +261,24 @@ function processImportFile(file, onComplete) {
   clearWizardError();
   const reader = new FileReader();
   reader.onload = (e) => {
+    let parsed;
     try {
-      const parsed = validateImportFile(e.target.result);
+      parsed = validateImportFile(e.target.result);
       if (!parsed.round_summary) parsed.round_summary = { rounds: [] };
       if (!parsed.reference_data) parsed.reference_data = {};
-      clearDraft();
-      hideWizardEl();
-      removeWizardChrome();
-      onComplete(parsed);
     } catch (err) {
-      showWizardError(err.message);
+      showWizardError(err.message);   // WIZ2-002: validation errors keep the wizard open
+      return;
     }
+    // Hide immediately so the customer sees no lingering wizard; if the async
+    // completion fails, re-show with an error rather than dead-ending (WIZ2-009).
+    clearDraft();
+    hideWizardEl();
+    removeWizardChrome();
+    Promise.resolve(onComplete(parsed)).catch((err) => {
+      showWizardEl();
+      showWizardError(`Import failed to load: ${err?.message || err}`);
+    });
   };
   reader.onerror = () => showWizardError('Could not read file');
   reader.readAsText(file);
@@ -190,7 +286,7 @@ function processImportFile(file, onComplete) {
 
 // ── Completion screen ─────────────────────────────────────────────────────
 
-function showCompletionScreen(state, onComplete) {
+function showCompletionScreen(state, onComplete, opts = {}) {
   const { user_team } = state;
   const roster = user_team.roster || [];
   const previewRows = roster.slice(0, 5).map(r =>
@@ -201,6 +297,14 @@ function showCompletionScreen(state, onComplete) {
   ).join('');
   const more = roster.length > 5 ? `<div style="color:var(--muted,#888);font-size:0.8rem;margin-top:4px">… and ${roster.length - 5} more</div>` : '';
 
+  // WIZ2-008: reassurance when the grade has no fixture template.
+  const emptyRoundsNote = opts.emptyRounds
+    ? `<p class="wizard-empty-rounds" role="alert" style="background:var(--warn-bg,#2c270a);color:var(--warn-fg,#f5c842);padding:10px 12px;border-radius:6px;font-size:0.82rem;margin-bottom:14px">
+         No fixture template exists yet for ${escHtml(opts.gradeName || 'this grade')} — your season starts empty.
+         You can add rounds any time under DATA → Rounds.
+       </p>`
+    : '';
+
   setWizardContent(`
     <div class="wizard-completion">
       <h2 style="margin-bottom:0.25rem">✦ ${escHtml(user_team.team_name)}</h2>
@@ -209,10 +313,12 @@ function showCompletionScreen(state, onComplete) {
         ${user_team.gender ? ' · ' + escHtml(user_team.gender) : ''}
         · ${roster.length} player${roster.length !== 1 ? 's' : ''}
       </p>
+      ${emptyRoundsNote}
       <div class="wizard-roster-preview">${previewRows}${more}</div>
       <p class="wizard-hint" style="margin-bottom:16px">
         You can edit player names and numbers any time in the App under DATA.
       </p>
+      <p class="wizard-error" role="alert" id="wizardCompletionError" style="display:none;color:#e55;margin-bottom:12px;font-size:0.85rem"></p>
       <button id="wizardLetsGo" class="btn btn-primary" type="button"
               style="width:100%;padding:14px;font-size:1.05rem">
         ✦ Let's Go!
@@ -220,11 +326,25 @@ function showCompletionScreen(state, onComplete) {
     </div>
   `);
 
-  document.getElementById('wizardLetsGo').addEventListener('click', () => {
-    clearDraft();
-    hideWizardEl();
-    removeWizardChrome();
-    onComplete(state);
+  // WIZ2-009: disable on first click (no double-submit); wrap the async
+  // completion so an IDB/persist failure surfaces instead of dead-ending with
+  // the wizard already hidden and the app never shown.
+  const letsGo = document.getElementById('wizardLetsGo');
+  letsGo.addEventListener('click', async () => {
+    if (letsGo.disabled) return;
+    letsGo.disabled = true;
+    letsGo.textContent = 'Setting up…';
+    try {
+      clearDraft();
+      await onComplete(state);
+      hideWizardEl();
+      removeWizardChrome();
+    } catch (err) {
+      const errEl = document.getElementById('wizardCompletionError');
+      if (errEl) { errEl.textContent = `Setup failed: ${err?.message || err}. Please try again.`; errEl.style.display = 'block'; }
+      letsGo.disabled = false;
+      letsGo.textContent = "✦ Let's Go!";
+    }
   });
 }
 
@@ -252,7 +372,7 @@ async function showStartFresh(refData, draft, onComplete) {
       ${escHtml(g.grade_name)}</option>`).join('');
 
   setWizardContent(`
-    <div class="wizard-step-counter" id="wzCounter">1 / 4</div>
+    <div class="wizard-step-counter" id="wzCounter" role="status" aria-live="polite" aria-label="Wizard step">1 / 4</div>
 
     <!-- Step 1: Club -->
     <div class="wizard-step" id="wzStep1">
@@ -301,10 +421,10 @@ async function showStartFresh(refData, draft, onComplete) {
     </div>
   `);
 
-  // Helper: reveal a step
+  // Helper: reveal a step (WIZ2-001: move focus to the new step's first control)
   function revealStep(id, counterText) {
     const el = document.getElementById(id);
-    if (el) el.classList.remove('wizard-hidden');
+    if (el) { el.classList.remove('wizard-hidden'); focusFirstInteractive(el); }
     const counter = document.getElementById('wzCounter');
     if (counter && counterText) counter.textContent = counterText;
   }
@@ -446,20 +566,7 @@ async function showStartFresh(refData, draft, onComplete) {
     teamName = document.getElementById('wzTeamName')?.value?.trim() || '';
     if (!teamName) return;
 
-    const clubName = (selectedClub?.name || '').toLowerCase();
-    const seededRounds = (roundsTemplate || [])
-      .filter(r => r.grade === selectedGrade?.grade_name)
-      .map(r => ({
-        round:              r.round,
-        date:               r.date,
-        time:               r.time || '08:45 AM',
-        home_away:          clubName && r.team1?.toLowerCase().includes(clubName) ? 'h'
-                          : clubName && r.team2?.toLowerCase().includes(clubName) ? 'a'
-                          : '',
-        opposition_club_id: '',
-        location_id:        '',
-        extra_notes:        '',
-      }));
+    const seededRounds = seedRoundsForGrade(roundsTemplate, selectedGrade?.grade_name, selectedClub?.name);
 
     const state = {
       user_team: {
@@ -490,7 +597,9 @@ async function showStartFresh(refData, draft, onComplete) {
 
     saveDraft({ selectedClub, selectedGrade, playerCount, roster, teamName });
     setWizardChrome({ showBack: true, onBack: () => showStartFresh(refData, loadDraft(), onComplete) });
-    showCompletionScreen(state, onComplete);
+    // WIZ2-008: most grades have no fixture template — tell the customer rather
+    // than dropping them into a silent empty season.
+    showCompletionScreen(state, onComplete, { emptyRounds: seededRounds.length === 0, gradeName: selectedGrade.grade_name });
   });
 }
 
@@ -520,15 +629,42 @@ async function showResumeLanding(refData, draft, onComplete) {
     showStartFresh(refData, draft, onComplete);
   });
   document.getElementById('wzNewSetup').addEventListener('click', () => {
-    clearDraft();
-    showStartFresh(refData, null, onComplete);
+    showConfirmDestructive('Discard your saved setup and start fresh?', () => {
+      clearDraft();
+      showStartFresh(refData, null, onComplete);
+    });
   });
 }
 
 // ── Public API ────────────────────────────────────────────────────────────
 
+// WIZ2-010: keep Tab focus inside the wizard, and route Escape through the
+// discard-confirm rather than letting it close the modal silently.
+function wizardFocusTrap(e) {
+  if (document.getElementById('wizardConfirm')) return; // the confirm owns focus
+  const wiz = document.getElementById('wizard');
+  if (!wiz || wiz.style.display === 'none') return;
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    showConfirmDestructive('Discard your setup progress and start over?', () => {
+      clearDraft();
+      document.dispatchEvent(new CustomEvent('wizard-restart'));
+    });
+    return;
+  }
+  if (e.key !== 'Tab') return;
+  const list = Array.from(wiz.querySelectorAll('select, input, button, a[href], [tabindex]:not([tabindex="-1"])'))
+    .filter(el => el.offsetParent !== null);
+  if (list.length === 0) return;
+  const first = list[0], last = list[list.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+}
+
 export async function showWizard(onComplete) {
   showWizardEl();
+  document.removeEventListener('keydown', wizardFocusTrap);
+  document.addEventListener('keydown', wizardFocusTrap);
 
   // Load all reference data concurrently
   const [clubs, grades, randomNames, roundsTemplate, jobs, locations] = await Promise.all([

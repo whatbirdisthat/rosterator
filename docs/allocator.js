@@ -61,6 +61,12 @@ function normaliseSubteam(value) {
   return cleanMetadata(value).toUpperCase();
 }
 
+// RLK: a 'confirmed' OR 'completed' (locked) round is preserved unchanged by the
+// allocator — its assignments never get rebalanced.
+function isPreservedStatus(status) {
+  return status === 'confirmed' || status === 'completed';
+}
+
 function splitSemicolonField(raw) {
   const parts = String(raw || '').split(';');
   const result = new Set();
@@ -142,7 +148,7 @@ export function fairnessLoadFromConfirmed(state) {
   }
   const rounds = state.round_summary?.rounds || [];
   for (const roundEntry of rounds) {
-    if (roundEntry.status === 'confirmed') {
+    if (isPreservedStatus(roundEntry.status)) {
       const entries = roundEntry.entries || [];
       for (const entry of entries) {
         const jumper = cleanMetadata(entry.jumper);
@@ -749,7 +755,7 @@ export function rebalanceFutureRounds(data, options = {}) {
   for (const rnd of rounds) {
     const roundDef = parseRound(rnd);
     const existingSchedule = existingRoundMap[roundDef.round_id];
-    if (!existingSchedule || existingSchedule.status !== 'confirmed') {
+    if (!existingSchedule || !isPreservedStatus(existingSchedule.status)) {
       pendingRoundDefs.push(rnd);
     }
   }
@@ -760,8 +766,8 @@ export function rebalanceFutureRounds(data, options = {}) {
     const roundId = roundDef.round_id;
     const existingEntry = existingRoundMap[roundId];
 
-    // Confirmed rounds pass through unchanged
-    if (existingEntry && existingEntry.status === 'confirmed') {
+    // Confirmed AND completed (locked) rounds pass through unchanged
+    if (existingEntry && isPreservedStatus(existingEntry.status)) {
       updatedRounds.push(existingEntry);
       prevEntry = existingEntry;
 
