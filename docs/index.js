@@ -1,8 +1,6 @@
+window.__APP_VERSION = "0.31.27";
 'use strict';
 
-// Build-time mode injection replaces this line with `window.__SPA_MODE = 'user';`
-window.__SPA_MODE = 'user';
-function isAdmin() { return window.__SPA_MODE !== 'user'; }
 
 // ── Allocator global (loaded in index.html as ES module) ──────────────────
 // Read lazily at call time — the ES module may not have executed yet at load.
@@ -339,20 +337,14 @@ function dispatch(action) {
   const result = SPA_STORE.dispatch(action);
 
   // OFF-005a: Persist mutations to IDB
-  if (_idbAvailable && _idb && _idb.saveSnapshot) {
+  const _persist = window.__dataLayer?.persistence;
+  if (_persist) {
     const data = getData();
     if (data) {
-      _idb.saveSnapshot(data).catch(err => {
+      _persist.save(data).catch(err => {
         console.warn('[offline] IDB save failed after dispatch', err);
-        // Non-blocking: IDB failure doesn't break app
       });
     }
-  }
-
-  // OFF-005b: Fire PUT async to sync with server
-  const data = getData();
-  if (data) {
-    syncToServer(data);
   }
 
   return result;
@@ -492,9 +484,8 @@ function selectSidebarViewModel(state = getState()) {
   const total = eligible.length + ineligible.length;
   const roster = data.user_team?.roster || [];
   const teamName = data.user_team?.team_name || 'Volunteer Roster';
-  const admin = isAdmin();
-  const playerCount = admin ? total : roster.length;
-  const playerLabel = admin ? 'volunteer' : 'player';
+  const playerCount = roster.length;
+  const playerLabel = 'player';
   const roundCount = rounds.length;
   const initials = getInitials(teamName);
   return {
@@ -503,13 +494,12 @@ function selectSidebarViewModel(state = getState()) {
     seasonYear: buildSeasonLabel(rounds),
     eligibleCount: eligible.length,
     totalCount: total,
-    isAdmin: admin,
-    modeLabel: admin ? 'ADMIN MODE' : 'USER MODE',
-    modeIcon: admin ? '⚙' : '👤',
+    modeLabel: 'USER MODE',
+    modeIcon: '👤',
     modeStats: `${playerCount} ${playerLabel}${playerCount !== 1 ? 's' : ''} · ${roundCount} round${roundCount !== 1 ? 's' : ''}`,
-    userAv: admin ? 'AD' : (initials.slice(0, 2) || 'U'),
-    userName: admin ? 'Admin view' : (teamName || 'User view'),
-    userRole: admin ? 'Server-synced · full access' : 'Local data · browser-only',
+    userAv: initials.slice(0, 2) || 'U',
+    userName: teamName || 'User view',
+    userRole: 'Local data · browser-only',
   };
 }
 
@@ -858,19 +848,15 @@ function hideLoading() {
 }
 
 async function initOfflineMode() {
-  // OFF-008: Check if IndexedDB is available
-  // This is a sync check; actual availability confirmed via async operations
-  _idbAvailable = window.__idb && typeof window.__idb.isAvailable === 'function' && window.__idb.isAvailable();
-  _idb = window.__idb;
+  // OFF-008: Check if IndexedDB is available via the data layer persistence impl.
+  _idbAvailable = window.__dataLayer?.persistence?.isAvailable?.() ?? false;
+  _idb = window.__idb; // kept for external compatibility only
 
   if (!_idbAvailable) {
     console.warn('[offline] IndexedDB unavailable (private browsing or blocked)');
-    if (!isAdmin()) {
-      // USP-054: USER_SPA requires IDB — show blocking error, do not proceed
-      showIdbUnavailableError();
-      return;
-    }
-    showOfflineBanner();
+    // USP-054: SPA requires IDB — show blocking error, do not proceed
+    showIdbUnavailableError();
+    return;
   }
 }
 
@@ -896,39 +882,6 @@ function showIdbUnavailableError() {
   if (app) app.style.display = 'none';
 }
 
-async function syncToServer(snapshot) {
-  // OFF-005b: Fire PUT async to sync with server
-  if (!snapshot) return;
-  if (!isAdmin()) return;
-
-  fetch('/api/roster-data', {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'If-Match': snapshot.revision ? String(snapshot.revision) : '0'
-    },
-    body: JSON.stringify(snapshot)
-  }).then(resp => {
-    if (resp.ok) {
-      // OFF-011: Sync successful, reset counter
-      _unsyncedWriteCount = 0;
-      hideUnsyncedBanner();
-    } else if (resp.status === 409) {
-      // OFF-013: Conflict detected (stub for now, full handler in item [B])
-      showToast('Data conflict — please reconcile', 'warning');
-    } else {
-      // OFF-006: Non-blocking error
-      _unsyncedWriteCount++;
-      showUnsyncedBanner();
-      showToast('Server sync failed — data saved locally', 'error');
-    }
-  }).catch(err => {
-    // OFF-006, OFF-010: Network error
-    _unsyncedWriteCount++;
-    showUnsyncedBanner();
-    showToast('Offline — changes saved to local storage', 'info');
-  });
-}
 
 // One-time migration: move print footer from legacy localStorage key into the store.
 // Called after every successful hydration path so legacy installs converge to the
@@ -951,40 +904,15 @@ async function initStore() {
   const url = new URL(location);
   const isFresh = url.searchParams.has('fresh');
 
-  if (isFresh && isAdmin()) {
-    // OFF-007: Bypass IDB, fetch fresh from server (admin mode only)
-    url.searchParams.delete('fresh');
-    history.replaceState(null, '', url.toString());
+  const _dl = window.__dataLayer;
+  const _persist = _dl?.persistence;
+  const _net = _dl?.network;
 
-    try {
-      const data = await fetch('/api/roster-data').then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      });
-      dispatch({ type: 'load-report', payload: { filename: 'from-server', report: data } });
-      migrateLegacyPrintFooter();
-      render();
-      document.getElementById('app').classList.add('show');
-      hideLoading();
-
-      // OFF-007: Repopulate IDB with fresh data
-      if (_idbAvailable && _idb && _idb.saveSnapshot) {
-        _idb.saveSnapshot(data).catch(err => {
-          console.warn('[offline] Failed to save fresh data to IDB', err);
-        });
-      }
-      return;
-    } catch (err) {
-      // OFF-016: Fresh load failure → blocking error, don't corrupt IDB
-      showBlockingError('Fresh load failed. Check your connection and try again.');
-      return;
-    }
-  }
 
   // OFF-003: Try IndexedDB first (if available)
-  if (_idbAvailable && _idb && _idb.loadSnapshot) {
+  if (_idbAvailable && _persist) {
     try {
-      const snapshot = await _idb.loadSnapshot();
+      const snapshot = await _persist.load();
       if (snapshot) {
         // OFF-003: Hydrate from IDB
         dispatch({ type: 'load-report', payload: { filename: 'from-idb', report: snapshot } });
@@ -993,8 +921,6 @@ async function initStore() {
         document.getElementById('app').classList.add('show');
         hideLoading();
 
-        // OFF-005b: Fire PUT async to sync (admin mode only)
-        syncToServer(snapshot);
         return;
       }
     } catch (err) {
@@ -1002,46 +928,34 @@ async function initStore() {
     }
   }
 
-  // USP-020: USER_SPA with no IDB state → show onboarding wizard
-  // USP-054: if IDB is unavailable, showIdbUnavailableError already handled it
-  if (!isAdmin()) {
-    if (!_idbAvailable) return;
-    hideLoading();
-    window.__showWizard(async (state) => {
-      if (_idbAvailable && _idb && _idb.saveSnapshot) {
-        await _idb.saveSnapshot(state);
+  // Cold start with empty IDB — try server if network is available (dev/test),
+  // then fall through to onboarding wizard. In production there is no server
+  // so the fetch fails quickly and the wizard shows.
+  if (_net) {
+    try {
+      const data = await _net.get('/api/roster-data');
+      if (data && data.round_summary) {
+        dispatch({ type: 'load-report', payload: { filename: 'from-server', report: data } });
+        migrateLegacyPrintFooter();
+        render();
+        document.getElementById('app').classList.add('show');
+        hideLoading();
+        if (_persist) { _persist.save(data).catch(() => {}); }
+        return;
       }
-      dispatch({ type: 'load-report', payload: { filename: 'from-wizard', report: state } });
-      render();
-      document.getElementById('app').classList.add('show');
-      window.scrollTo(0, 0);
-    });
-    return;
+    } catch (_) { /* no server — fall through to wizard */ }
   }
 
-  // OFF-004: Admin fall back to server
-  try {
-    const data = await fetch('/api/roster-data').then(r => {
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      return r.json();
-    });
-    dispatch({ type: 'load-report', payload: { filename: 'from-server', report: data } });
-    migrateLegacyPrintFooter();
+  // USP-020: No IDB state and no server data — show onboarding wizard
+  if (!_idbAvailable) return;
+  hideLoading();
+  window.__showWizard(async (state) => {
+    if (_persist) await _persist.save(state);
+    dispatch({ type: 'load-report', payload: { filename: 'from-wizard', report: state } });
     render();
     document.getElementById('app').classList.add('show');
-    hideLoading();
-
-    // OFF-005b: Persist to IDB for next time
-    if (_idbAvailable && _idb && _idb.saveSnapshot) {
-      _idb.saveSnapshot(data).catch(err => {
-        console.warn('[offline] Failed to save server data to IDB', err);
-      });
-    }
-  } catch (err) {
-    // OFF-009: Blocking error if both IDB and server fail
-    console.error('[offline] initStore failed', err);
-    showBlockingError('Cannot load roster. Check your connection and try again.');
-  }
+    window.scrollTo(0, 0);
+  });
 }
 
 // ── Bootstrap ────────────────────────────────────────────────────────────
@@ -1059,16 +973,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   // OFF-003/OFF-004: New offline-first load path
   // This is the main entry point for the app
   await initStore();
-
-  // Wire up banner buttons
-  const bannerReconnect = document.getElementById('banner-reconnect');
-  if (bannerReconnect) {
-    bannerReconnect.addEventListener('click', () => {
-      // Try syncing again
-      const data = getData();
-      if (data) syncToServer(data);
-    });
-  }
 
   const bannerClose = document.getElementById('banner-close');
   if (bannerClose) {
@@ -1107,9 +1011,10 @@ function showPicker(files) {
 }
 
 function openPicker() {
-  fetch('/api/roster-files')
-    .then(r => r.ok ? r.json() : Promise.reject())
-    .then(files => showPicker(files))
+  const net = window.__dataLayer?.network;
+  if (!net) { showPicker([]); return; }
+  net.get('/api/roster-files')
+    .then(files => showPicker(files || []))
     .catch(() => showPicker([]));
 }
 
@@ -1120,7 +1025,9 @@ async function saveSnapshot() {
   const btn = document.getElementById('btnSaveSnapshot');
   if (btn) btn.disabled = true;
   try {
-    const res = await fetch('/api/roster-files', {
+    const net = window.__dataLayer?.network;
+    if (!net) { showSnapshotToast('Save failed: no network layer', 'err'); return; }
+    const res = await net.rawFetch('/api/roster-files', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ baseName: 'roster_report', model: data }),
@@ -1158,9 +1065,10 @@ async function reallocate(btnEl) {
     const mode = localStorage.getItem('allocator-mode') ?? 'spa';
 
     if (mode === 'spa') {
-      // ALC-004: Invoke JS allocator
+      // ALC-004: Invoke JS allocator via data layer
       try {
-        const allocator = _getAllocator();
+        const _allocLayer = window.__dataLayer?.allocator;
+        if (!_allocLayer) throw new Error('Allocator not available');
 
         // Snapshot manual assignments from non-confirmed rounds before reallocating.
         // Group by round|job|subteam in order — slot_index schemes vary between
@@ -1178,7 +1086,7 @@ async function reallocate(btnEl) {
           }
         }
 
-        const result = allocator.allocate(data);
+        const result = await _allocLayer.allocate(data);
 
         // Re-overlay manual assignments by positional match within each job+subteam group
         if (Object.keys(manualGroups).length > 0) {
@@ -1209,35 +1117,11 @@ async function reallocate(btnEl) {
         });
         // ALC-005b: render
         render();
-        _writeMetadata();
-        // ALC-005c: fire PUT asynchronously (non-blocking)
-        syncToServer(newState);
         showSnapshotToast('Re-allocated successfully', 'ok');
       } catch (err) {
         // ALC-024: Show error toast, do not update state
         showSnapshotToast(`Allocation failed: ${err.message}`, 'err');
       }
-    } else if (mode === 'server' && isAdmin()) {
-      // ALC-019: Call server engine
-      const res = await fetch('/api/reallocate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: data }),
-      });
-      if (!res.ok) {
-        // ALC-021: Show error, do not silently fall back
-        const err = await res.json().catch(() => ({}));
-        showSnapshotToast('Re-allocate failed: ' + (err.error || res.status), 'err');
-        return;
-      }
-      const updated = await res.json();
-      dispatch({
-        type: 'replace-server-report',
-        payload: { report: updated },
-      });
-      render();
-      _writeMetadata();
-      showSnapshotToast('Re-allocated successfully', 'ok');
     }
   } catch (err) {
     showSnapshotToast('Re-allocate failed: network error', 'err');
@@ -1246,18 +1130,6 @@ async function reallocate(btnEl) {
   }
 }
 
-// ALC-005c: Fire PUT asynchronously for SPA mode
-function syncToServer(snapshot) {
-  if (!isAdmin()) return;
-  fetch('/api/roster-data', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(snapshot),
-  }).catch(() => {
-    // ALC-006: Non-blocking error toast
-    showSnapshotToast('Server sync failed — data saved locally', 'err');
-  });
-}
 
 // ── Round edit mode ───────────────────────────────────────────────────────
 function _editOppositions() {
@@ -1392,26 +1264,13 @@ function saveRoundEdit(roundNum) {
   dispatch({ type: 'set-round-detail', payload: { roundNum, open: true } });
   closeEditMode();
   render();
-  if (isAdmin()) {
-    fetch(`/api/rounds/${encodeURIComponent(roundNum)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        date: updates.date,
-        opposition_club_id: updates.opposition_club_id ?? (r.opposition_club_id || ''),
-        home_away: updates.home_away,
-        location_id: updates.location_id,
-        time: updates.time ?? (r.time || ''),
-      }),
-    }).catch(e => console.error('Round fixture save failed:', e));
-  }
 }
 
 // ── Load & render ────────────────────────────────────────────────────────
 async function loadFile(filename) {
-  const res = await fetch(`/roster-data/${filename}`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const report = await res.json();
+  const net = window.__dataLayer?.network;
+  if (!net) throw new Error('No network layer');
+  const report = await net.get(`/roster-data/${filename}`);
   dispatch({ type: 'load-report', payload: { filename, report } });
   // One-time migration: move print footer from localStorage into the store
   if (!getData()?.ui_preferences?.print_footer) {
@@ -1426,20 +1285,20 @@ async function loadFile(filename) {
 }
 
 function render() {
-  try { renderLineup();       } catch(e) { console.error('[roster-spa] renderLineup:', e); }
+  try { renderLineup();       } catch(e) { console.error('[spa] renderLineup:', e); }
   if (!getData()) return;
-  try { renderNavigation();   } catch(e) { console.error('[roster-spa] renderNavigation:', e); }
-  try { renderSidebar();      } catch(e) { console.error('[roster-spa] renderSidebar:', e); }
-  try { renderDashboard();    } catch(e) { console.error('[roster-spa] renderDashboard:', e); }
-  try { renderRoster();       } catch(e) { console.error('[roster-spa] renderRoster:', e); }
-  try { renderRoundsList();   } catch(e) { console.error('[roster-spa] renderRoundsList:', e); }
-  try { renderRoundDetail();  } catch(e) { console.error('[roster-spa] renderRoundDetail:', e); }
-  try { renderVolunteers();   } catch(e) { console.error('[roster-spa] renderVolunteers:', e); }
-  try { renderBalance();      } catch(e) { console.error('[roster-spa] renderBalance:', e); }
-  try { renderConstraints();  } catch(e) { console.error('[roster-spa] renderConstraints:', e); }
-  try { renderSettings();     } catch(e) { console.error('[roster-spa] renderSettings:', e); }
-  try { renderTeamSplits();   } catch(e) { console.error('[roster-spa] renderTeamSplits:', e); }
-  try { renderDataCounts();   } catch(e) { console.error('[roster-spa] renderDataCounts:', e); }
+  try { renderNavigation();   } catch(e) { console.error('[spa] renderNavigation:', e); }
+  try { renderSidebar();      } catch(e) { console.error('[spa] renderSidebar:', e); }
+  try { renderDashboard();    } catch(e) { console.error('[spa] renderDashboard:', e); }
+  try { renderRoster();       } catch(e) { console.error('[spa] renderRoster:', e); }
+  try { renderRoundsList();   } catch(e) { console.error('[spa] renderRoundsList:', e); }
+  try { renderRoundDetail();  } catch(e) { console.error('[spa] renderRoundDetail:', e); }
+  try { renderVolunteers();   } catch(e) { console.error('[spa] renderVolunteers:', e); }
+  try { renderBalance();      } catch(e) { console.error('[spa] renderBalance:', e); }
+  try { renderConstraints();  } catch(e) { console.error('[spa] renderConstraints:', e); }
+  try { renderSettings();     } catch(e) { console.error('[spa] renderSettings:', e); }
+  try { renderTeamSplits();   } catch(e) { console.error('[spa] renderTeamSplits:', e); }
+  try { renderDataCounts();   } catch(e) { console.error('[spa] renderDataCounts:', e); }
 }
 
 function renderNavigation() {
@@ -1494,7 +1353,7 @@ function renderSidebar() {
   document.getElementById('sbUserName').textContent = viewModel.userName;
   document.getElementById('sbUserRole').textContent = viewModel.userRole;
   const sidebar = document.getElementById('sidebar');
-  if (sidebar) sidebar.dataset.mode = viewModel.isAdmin ? 'admin' : 'user';
+  if (sidebar) sidebar.dataset.mode = 'user';
 }
 
 // ── Dashboard ────────────────────────────────────────────────────────────
@@ -1936,7 +1795,7 @@ function buildPrintPreview(r) {
     ${r.extra_notes ? `<div class="pp-notes">${escHtml(r.extra_notes)}</div>` : ''}
     <div class="pp-job-list">${jobRows}</div>
     <div class="pp-footer">
-      <span>Generated ${today} · roster-spa</span>
+      <span>Generated ${today} · spa</span>
       <span>${escHtml(_printFooter)}</span>
     </div>`;
 }
@@ -2170,6 +2029,12 @@ function renderSettings() {
 
   const _sdEl = document.getElementById('screenDims');
   if (_sdEl) _sdEl.textContent = `${window.innerWidth} × ${window.innerHeight}px`;
+
+  const vEl = document.getElementById('appVersionLabel');
+  if (vEl) {
+    const ver = window.__APP_VERSION || 'dev';
+    vEl.textContent = `v${ver}`;
+  }
 }
 
 // ── Volunteer summary popup (US-08) ──────────────────────────────────────
@@ -2529,9 +2394,8 @@ function handleTmDataImport() {
 
       if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
 
-      if (_idbAvailable && _idb && _idb.saveSnapshot) {
-        await _idb.saveSnapshot(parsed);
-      }
+      const _persistImport = window.__dataLayer?.persistence;
+      if (_persistImport) await _persistImport.save(parsed);
       dispatch({ type: 'load-report', payload: { filename: 'from-import', report: parsed } });
       render();
     } catch (err) {
@@ -2555,7 +2419,7 @@ function switchPanel(name) {
 
   // Load data records when the Data panel is opened
   if (name === 'data') {
-    loadAllDataRecords().catch(err => console.error('[roster-spa] loadAllDataRecords:', err));
+    loadAllDataRecords().catch(err => console.error('[spa] loadAllDataRecords:', err));
   }
 }
 
@@ -2770,29 +2634,6 @@ function toggleHomeAway(roundNum) {
 
   render();
 
-  if (isAdmin()) {
-    fetch(`/api/rounds/${encodeURIComponent(String(roundNum))}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        home_away:          newHa,
-        location_id:        updates.location_id,
-        date:               r.date || '',
-        opposition_club_id: oppositionClubId,
-        time:               r.time || '',
-      }),
-    }).then(res => {
-      if (!res.ok) {
-        dispatch({ type: 'save-round-edit', payload: { roundNum: String(roundNum), updates: preSnapshot } });
-        render();
-        showSnapshotToast('Toggle failed: ' + res.status, 'err');
-      }
-    }).catch(() => {
-      dispatch({ type: 'save-round-edit', payload: { roundNum: String(roundNum), updates: preSnapshot } });
-      render();
-      showSnapshotToast('Toggle failed: network error', 'err');
-    });
-  }
 }
 
 function saveUserTeam() {
@@ -2806,22 +2647,6 @@ function saveUserTeam() {
     payload: { clubId, teamName },
   });
   render();
-  _writeMetadata();
-}
-
-function _writeMetadata() {
-  if (!isAdmin()) return;
-  const data = getData();
-  if (!data) return;
-  const body = {
-    user_team: data.user_team || { club_id: '', team_name: '' },
-    ui_preferences: data.ui_preferences || {},
-  };
-  fetch('/api/metadata', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  }).catch(() => {});
 }
 
 // ── Lineup (splits editor) ───────────────────────────────────────────────
@@ -3068,9 +2893,9 @@ const DATA_SCHEMAS = {
     ],
   },
   jobs: {
-    pk: 'job_name',
+    pk: 'job_id',
     label: 'Job',
-    columns: ['job_name','volunteers_required','subteam','home_only'],
+    columns: ['job_id','job_name','volunteers_required','subteam','home_only'],
     fields: [
       { name: 'job_name',            label: 'Job name',  type: 'text', required: true  },
       { name: 'volunteers_required', label: 'Slots',     type: 'text', required: false },
@@ -3091,55 +2916,51 @@ const DATA_SCHEMAS = {
     pk: 'jumper',
     label: 'Volunteer Prefs',
     // volunteer_name is display-only (derived from players) — not in fields
-    columns: ['jumper','volunteer_name','preferred_job','avoid_jobs'],
+    columns: ['jumper','volunteer_name','preferred_jobs','avoid_jobs'],
     fields: [
-      { name: 'jumper',        label: 'Jumper #', type: 'text', required: true  },
-      { name: 'preferred_job', label: 'Prefers',  type: 'text', required: false },
-      { name: 'avoid_jobs',    label: 'Avoids',   type: 'text', required: false },
+      { name: 'jumper',        label: 'Jumper #', type: 'text',          required: true  },
+      { name: 'preferred_jobs', label: 'Prefers', type: 'tag-picker-ref',
+        refType: 'jobs', refPk: 'job_id', refLabel: 'job_name',          required: false },
+      { name: 'avoid_jobs',    label: 'Avoids',   type: 'tag-picker-ref',
+        refType: 'jobs', refPk: 'job_id', refLabel: 'job_name',          required: false },
     ],
   },
 };
 
 // Fetch records for a data type and cache them
 async function fetchDataRecords(type) {
-  if (!isAdmin()) {
-    // USER_SPA: read from the store — no server call
-    const data = getData();
-    if (type === 'rounds') {
-      // rounds live in round_summary.rounds, not reference_data
-      // deepClone to get a mutable copy (store data is deepFreeze'd)
-      _dataRecords[type] = deepClone(data?.round_summary?.rounds || []);
-    } else if (type === 'volunteers') {
-      // Volunteers are players. Name is derived from players by jumper (read-only).
-      // Post-save data lives in reference_data.volunteers; initial load falls back to
-      // volunteers.eligible (populated by the wizard).
-      const players = _dataRecords['players'] || (data?.reference_data?.players || []);
-      const nameByJumper = Object.fromEntries(
-        players.map(p => [String(p.jumper), p.player_name])
-      );
-      const fromRef = (data?.reference_data?.volunteers || []);
-      if (fromRef.length > 0) {
-        _dataRecords[type] = fromRef.map(v => ({
-          ...v,
-          volunteer_name: nameByJumper[String(v.jumper)] || v.volunteer_name || '',
-        }));
-      } else {
-        _dataRecords[type] = (data?.volunteers?.eligible || []).map(v => ({
-          jumper:         String(v.jumper),
-          volunteer_name: nameByJumper[String(v.jumper)] || v.volunteer || '',
-          preferred_job:  (v.preferred_jobs || []).join(', '),
-          avoid_jobs:     (v.avoid_jobs     || []).join(', '),
-        }));
-      }
+  // Read from the store — no server call
+  const data = getData();
+  if (type === 'rounds') {
+    // rounds live in round_summary.rounds, not reference_data
+    // deepClone to get a mutable copy (store data is deepFreeze'd)
+    _dataRecords[type] = deepClone(data?.round_summary?.rounds || []);
+  } else if (type === 'volunteers') {
+    // Volunteers are players. Name is derived from players by jumper (read-only).
+    // Post-save data lives in reference_data.volunteers; initial load falls back to
+    // volunteers.eligible (populated by the wizard).
+    const players = _dataRecords['players'] || (data?.reference_data?.players || []);
+    const nameByJumper = Object.fromEntries(
+      players.map(p => [String(p.jumper), p.player_name])
+    );
+    const fromRef = (data?.reference_data?.volunteers || []);
+    if (fromRef.length > 0) {
+      _dataRecords[type] = fromRef.map(v => ({
+        ...v,
+        volunteer_name: nameByJumper[String(v.jumper)] || v.volunteer_name || '',
+      }));
     } else {
-      // deepClone to get a mutable copy (store data is deepFreeze'd)
-      _dataRecords[type] = deepClone((data?.reference_data || {})[type] || []);
+      _dataRecords[type] = (data?.volunteers?.eligible || []).map(v => ({
+        jumper:         String(v.jumper),
+        volunteer_name: nameByJumper[String(v.jumper)] || v.volunteer || '',
+        preferred_job:  (v.preferred_jobs || []).join(', '),
+        avoid_jobs:     (v.avoid_jobs     || []).join(', '),
+      }));
     }
-    return _dataRecords[type];
+  } else {
+    // deepClone to get a mutable copy (store data is deepFreeze'd)
+    _dataRecords[type] = deepClone((data?.reference_data || {})[type] || []);
   }
-  const res = await fetch(`/api/data/${type}`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  _dataRecords[type] = await res.json();
   return _dataRecords[type];
 }
 
@@ -3227,6 +3048,76 @@ function switchDataSubpanel(type) {
   }
 }
 
+function initTagPickers(dlg) {
+  dlg.querySelectorAll('.tag-picker').forEach(picker => {
+    const fieldName = picker.dataset.field;
+    const refType   = picker.dataset.refType;
+    const refPk     = picker.dataset.refPk;
+    const refLabel  = picker.dataset.refLabel;
+    const input     = picker.querySelector('.tag-input');
+    const dropdown  = picker.querySelector('.tag-dropdown');
+    const pillsEl   = picker.querySelector('.tag-pills');
+    const hidden    = dlg.querySelector(`#tp-hidden-${fieldName}`);
+
+    function getIds() {
+      try { return JSON.parse(hidden.value || '[]'); } catch { return []; }
+    }
+    function setIds(ids) { hidden.value = JSON.stringify(ids); }
+
+    function renderDropdown(filter) {
+      const records = _dataRecords[refType] || [];
+      const current = getIds();
+      const matches = records.filter(r => {
+        if (current.includes(r[refPk])) return false;
+        return !filter || String(r[refLabel] ?? '').toLowerCase().includes(filter.toLowerCase());
+      });
+      dropdown.innerHTML = matches.map(r =>
+        `<div class="tag-option" data-pk="${r[refPk]}">${escHtml(String(r[refLabel] ?? r[refPk]))}</div>`
+      ).join('');
+      dropdown.classList.toggle('hidden', matches.length === 0);
+    }
+
+    function addPill(pkVal, label) {
+      const pill = document.createElement('span');
+      pill.className = 'tag-pill';
+      pill.dataset.id = pkVal;
+      pill.innerHTML = `${escHtml(label)}<button type="button" class="tag-remove" aria-label="Remove ${escHtml(label)}">×</button>`;
+      pill.querySelector('.tag-remove').addEventListener('click', () => {
+        const ids = getIds().filter(id => id !== pkVal);
+        setIds(ids);
+        pill.remove();
+      });
+      pillsEl.appendChild(pill);
+    }
+
+    input.addEventListener('input', () => renderDropdown(input.value));
+    input.addEventListener('focus', () => renderDropdown(input.value));
+
+    dropdown.addEventListener('click', e => {
+      const opt = e.target.closest('.tag-option');
+      if (!opt) return;
+      const pk = Number(opt.dataset.pk);
+      const label = opt.textContent;
+      const ids = getIds();
+      if (!ids.includes(pk)) {
+        ids.push(pk);
+        setIds(ids);
+        addPill(pk, label);
+      }
+      input.value = '';
+      dropdown.classList.add('hidden');
+      input.focus();
+    });
+
+    document.addEventListener('click', function closeDropdown(e) {
+      if (!picker.contains(e.target)) {
+        dropdown.classList.add('hidden');
+        if (!dlg.open) document.removeEventListener('click', closeDropdown);
+      }
+    });
+  });
+}
+
 // Open add/edit dialog
 async function openDataDialog(type, idEncoded = null) {
   const schema = DATA_SCHEMAS[type];
@@ -3280,6 +3171,25 @@ async function openDataDialog(type, idEncoded = null) {
         <span class="data-field-error hidden" id="dfe-${f.name}"></span>
       </div>`;
     }
+    if (f.type === 'tag-picker-ref') {
+      const refRecords = _dataRecords[f.refType] || [];
+      const existingIds = Array.isArray(existing?.[f.name]) ? existing[f.name] : [];
+      const pillsHtml = existingIds.map(id => {
+        const rec = refRecords.find(r => r[f.refPk] === id);
+        const label = rec ? escHtml(String(rec[f.refLabel] ?? id)) : String(id);
+        return `<span class="tag-pill" data-id="${id}">${label}<button type="button" class="tag-remove" aria-label="Remove ${label}">×</button></span>`;
+      }).join('');
+      return `<div class="data-field">
+        <label>${escHtml(f.label)}${f.required ? ' *' : ''}</label>
+        <div class="tag-picker" data-field="${f.name}" data-ref-type="${f.refType}"
+             data-ref-pk="${f.refPk}" data-ref-label="${f.refLabel}">
+          <div class="tag-pills">${pillsHtml}</div>
+          <input class="tag-input" type="text" placeholder="Type to search…" autocomplete="off">
+          <div class="tag-dropdown hidden"></div>
+        </div>
+        <input type="hidden" name="${f.name}" id="tp-hidden-${f.name}" value="${escHtml(JSON.stringify(existingIds))}">
+      </div>`;
+    }
     return `<div class="data-field">
       <label for="df-${f.name}">${escHtml(f.label)}${f.required ? ' *' : ''}</label>
       <input id="df-${f.name}" name="${f.name}" type="${f.type}" value="${escHtml(val)}" ${req}
@@ -3303,6 +3213,7 @@ async function openDataDialog(type, idEncoded = null) {
     </form>`;
   document.body.appendChild(dlg);
   dlg.showModal();
+  initTagPickers(dlg);
 
   dlg.querySelector('#dataDialogCancel').addEventListener('click', () => dlg.close());
   dlg.addEventListener('close', () => dlg.remove());
@@ -3322,7 +3233,12 @@ async function submitDataForm(type, isEdit, id, dlg, schema) {
   const body = {};
   schema.fields.forEach(f => {
     const el = form.querySelector(`[name="${f.name}"]`);
-    if (el) body[f.name] = el.value;
+    if (!el) return;
+    if (f.type === 'tag-picker-ref') {
+      try { body[f.name] = JSON.parse(el.value || '[]'); } catch { body[f.name] = []; }
+    } else {
+      body[f.name] = el.value;
+    }
   });
 
   // Client-side required validation
@@ -3337,71 +3253,40 @@ async function submitDataForm(type, isEdit, id, dlg, schema) {
     }
   });
   if (!valid) return;
-  if (!isAdmin()) {
-    // USER_SPA: persist the record to the in-memory cache and the store
-    const pk = schema.pk;
 
-    // Auto-assign PKs for new records that need numeric IDs
-    if (!isEdit) {
-      if (type === 'clubs') {
-        const maxId = Math.max(0, ...(_dataRecords['clubs'] || []).map(r => Number(r.club_id) || 0));
-        body.club_id = String(maxId + 1);
-      } else if (type === 'locations') {
-        const maxId = Math.max(0, ...(_dataRecords['locations'] || []).map(r => Number(r.location_id) || 0));
-        body.location_id = String(maxId + 1);
-      }
-    }
+  // Persist the record to the in-memory cache and the store
+  const pk = schema.pk;
 
-    if (isEdit) {
-      const idx = (_dataRecords[type] || []).findIndex(r => String(r[pk]) === id);
-      if (idx >= 0) _dataRecords[type][idx] = { ..._dataRecords[type][idx], ...body };
-    } else {
-      if (!_dataRecords[type]) _dataRecords[type] = [];
-      _dataRecords[type].push(body);
+  // Auto-assign PKs for new records that need numeric IDs
+  if (!isEdit) {
+    if (type === 'clubs') {
+      const maxId = Math.max(0, ...(_dataRecords['clubs'] || []).map(r => Number(r.club_id) || 0));
+      body.club_id = String(maxId + 1);
+    } else if (type === 'locations') {
+      const maxId = Math.max(0, ...(_dataRecords['locations'] || []).map(r => Number(r.location_id) || 0));
+      body.location_id = String(maxId + 1);
     }
-
-    if (type === 'rounds') {
-      // rounds live in round_summary.rounds — replace the full array (handles both edit + add)
-      const currentData = getData();
-      const roundSummary = { ...(currentData?.round_summary || {}), rounds: _dataRecords['rounds'] };
-      dispatch({ type: 'apply-server-fragments', payload: { fragments: { round_summary: roundSummary } } });
-    } else {
-      // All other types (including volunteers) write to reference_data via update-reference-data
-      dispatch({ type: 'update-reference-data', payload: { key: type, records: _dataRecords[type] } });
-    }
-    dlg.close();
-    await refreshDataSubpanel(type);
-    return;
   }
 
-  const url = isEdit
-    ? `/api/data/${type}/${encodeURIComponent(id)}`
-    : `/api/data/${type}`;
-  const method = isEdit ? 'PUT' : 'POST';
-
-  let res;
-  try {
-    res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-  } catch (err) {
-    errEl.textContent = 'Network error — please try again';
-    errEl.classList.remove('hidden');
-    return;
+  if (isEdit) {
+    const idx = (_dataRecords[type] || []).findIndex(r => String(r[pk]) === id);
+    if (idx >= 0) _dataRecords[type][idx] = { ..._dataRecords[type][idx], ...body };
+  } else {
+    if (!_dataRecords[type]) _dataRecords[type] = [];
+    _dataRecords[type].push(body);
   }
 
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    errEl.textContent = data.error || `Server error (${res.status})`;
-    errEl.classList.remove('hidden');
-    return;
+  if (type === 'rounds') {
+    // rounds live in round_summary.rounds — replace the full array (handles both edit + add)
+    const currentData = getData();
+    const roundSummary = { ...(currentData?.round_summary || {}), rounds: _dataRecords['rounds'] };
+    dispatch({ type: 'apply-server-fragments', payload: { fragments: { round_summary: roundSummary } } });
+  } else {
+    // All other types (including volunteers) write to reference_data via update-reference-data
+    dispatch({ type: 'update-reference-data', payload: { key: type, records: _dataRecords[type] } });
   }
-
   dlg.close();
   await refreshDataSubpanel(type);
-  dispatch({ type: 'update-reference-data', payload: { key: type, records: _dataRecords[type] } });
 }
 
 // Inline delete confirmation
@@ -3433,54 +3318,16 @@ function confirmDataDelete(type, idEncoded, btn) {
 }
 
 async function executeDataDelete(type, idEncoded, rowEl, confirmBtn) {
-  if (!isAdmin()) {
-    // USER_SPA: delete from in-memory cache and update store
-    const schema = DATA_SCHEMAS[type];
-    const id = decodeURIComponent(idEncoded);
-    _dataRecords[type] = (_dataRecords[type] || []).filter(
-      r => String(r[schema.pk]) !== id
-    );
-    if (type !== 'volunteers') {
-      dispatch({ type: 'update-reference-data', payload: { key: type, records: _dataRecords[type] } });
-    }
-    await refreshDataSubpanel(type);
-    return;
-  }
-  const url = `/api/data/${type}/${idEncoded}`;
-  let res;
-  try {
-    res = await fetch(url, { method: 'DELETE' });
-  } catch (err) {
-    return;
-  }
-
-  if (res.status === 409) {
-    // Referential integrity conflict — show warning and offer force
-    const data = await res.json().catch(() => ({}));
-    const affected = (data.affected_rounds || []).join(', ');
-    const warning = document.createElement('span');
-    warning.className = 'data-ri-warning';
-    warning.textContent = `Used by round(s): ${affected}. `;
-    const forceBtn = document.createElement('button');
-    forceBtn.className = 'btn data-force-delete';
-    forceBtn.textContent = 'Delete anyway';
-    confirmBtn.parentElement.appendChild(warning);
-    confirmBtn.parentElement.appendChild(forceBtn);
-    confirmBtn.remove();
-    forceBtn.addEventListener('click', async () => {
-      const fRes = await fetch(`${url}?force=true`, { method: 'DELETE' });
-      if (fRes.ok) {
-        await refreshDataSubpanel(type);
-        dispatch({ type: 'update-reference-data', payload: { key: type, records: _dataRecords[type] } });
-      }
-    });
-    return;
-  }
-
-  if (res.ok) {
-    await refreshDataSubpanel(type);
+  // Delete from in-memory cache and update store
+  const schema = DATA_SCHEMAS[type];
+  const id = decodeURIComponent(idEncoded);
+  _dataRecords[type] = (_dataRecords[type] || []).filter(
+    r => String(r[schema.pk]) !== id
+  );
+  if (type !== 'volunteers') {
     dispatch({ type: 'update-reference-data', payload: { key: type, records: _dataRecords[type] } });
   }
+  await refreshDataSubpanel(type);
 }
 
 // Initial load of all data types for the Data panel

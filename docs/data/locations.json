@@ -1,0 +1,302 @@
+[
+  {
+    "location_id": 1,
+    "club_id": 1,
+    "display_name": "Bayswater Oval, Mountain Highway, Bayswater"
+  },
+  {
+    "location_id": 2,
+    "club_id": 2,
+    "display_name": "Holm Park Reserve"
+  },
+  {
+    "location_id": 3,
+    "club_id": 3,
+    "display_name": "Morton Park, Central Road, Blackburn"
+  },
+  {
+    "location_id": 4,
+    "club_id": 4,
+    "display_name": "Miller Park, Boronia"
+  },
+  {
+    "location_id": 5,
+    "club_id": 4,
+    "display_name": "Chandler Park, Boronia"
+  },
+  {
+    "location_id": 6,
+    "club_id": 4,
+    "display_name": "Tormore Reserve, Boronia"
+  },
+  {
+    "location_id": 7,
+    "club_id": 5,
+    "display_name": "Kimberley Reserve, Kimberley Drive, Chirnside Park"
+  },
+  {
+    "location_id": 8,
+    "club_id": 6,
+    "display_name": "Halley Supple Reserve, South Gateway, Coldstream"
+  },
+  {
+    "location_id": 9,
+    "club_id": 7,
+    "display_name": "Bargenong Reserve, Croydon"
+  },
+  {
+    "location_id": 10,
+    "club_id": 8,
+    "display_name": "Donvale Reserve, Mitcham Road, Donvale"
+  },
+  {
+    "location_id": 11,
+    "club_id": 9,
+    "display_name": "East Burwood Reserve, Burwood Highway, East Burwood"
+  },
+  {
+    "location_id": 12,
+    "club_id": 10,
+    "display_name": "Ainslie Park, Croydon"
+  },
+  {
+    "location_id": 13,
+    "club_id": 10,
+    "display_name": "East Ringwood Reserve, East Ringwood"
+  },
+  {
+    "location_id": 14,
+    "club_id": 10,
+    "display_name": "Glen Park, Glen Park Road, Bayswater North"
+  },
+  {
+    "location_id": 15,
+    "club_id": 11,
+    "display_name": "Charles Green Reserve, James Cook Drive, Endeavour Hills"
+  },
+  {
+    "location_id": 16,
+    "club_id": 12,
+    "display_name": "Lewis Park, Lewis Road, Wantirna"
+  },
+  {
+    "location_id": 17,
+    "club_id": 13,
+    "display_name": "Wally Tew Reserve, Ferntree Gully"
+  },
+  {
+    "location_id": 18,
+    "club_id": 13,
+    "display_name": "Picketts Reserve, Ferntree Gully"
+  },
+  {
+    "location_id": 19,
+    "club_id": 14,
+    "display_name": "Brentwood Reserve, Maylands Crescent, Glen Waverley"
+  },
+  {
+    "location_id": 20,
+    "club_id": 15,
+    "display_name": "Heatherdale Reserve, Mitcham"
+  },
+  {
+    "location_id": 21,
+    "club_id": 15,
+    "display_name": "HE Parker Reserve, Heathmont"
+  },
+  {
+    "location_id": 22,
+    "club_id": 16,
+    "display_name": "Pinks Reserve, Liverpool Road, Kilsyth"
+  },
+  {
+    "location_id": 23,
+    "club_id": 17,
+    "display_name": "Knox Gardens Reserve, Argyle Way, Wantirna South"
+  },
+  {
+    "location_id": 24,
+    "club_id": 18,
+    "display_name": "The Gateway Reserve, Lilydale"
+  },
+  {
+    "location_id": 25,
+    "club_id": 18,
+    "display_name": "Lilydale Sports Oval, Lilydale"
+  },
+  {
+    "location_id": 26,
+    "club_id": 19,
+    "display_name": "Lakesfield Reserve, Lakesfield Drive, Lysterfield"
+  },
+  {
+    "location_id": 27,
+    "club_id": 19,
+    "display_name": "Windermere Reserve, Windermere Dr, Ferntree Gully"
+  },
+  {
+    "location_id": 28,
+    "club_id": 20,
+    "display_name": "Walker Park, Maroondah Highway, Nunawading"
+  },
+  {
+    "location_id": 29,
+    "club_id": 21,
+    "display_name": "Montrose Reserve, Mount Dandenong Tourist Road, Montrose"
+  },
+  {
+    "location_id": 30,
+    "club_id": 22,
+    "display_name": "Kiloran Park, Mooroolbark"
+  },
+  {
+    "location_id": 31,
+    "club_id": 22,
+    "display_name": "Heights Reserve, Mooroolbark"
+  },
+  {
+    "location_id": 32,
+    "club_id": 23,
+    "display_name": "Ross Reserve, Memorial Drive, Noble Park"
+  },
+  {
+    "location_id": 33,
+    "club_id": 23,
+    "display_name": "Pat Wright Senior Oval, Moodemere Street, Noble Park"
+  },
+  {
+    "location_id": 34,
+    "club_id": 24,
+    "display_name": "Ringwood North Reserve, North Ringwood"
+  },
+  {
+    "location_id": 35,
+    "club_id": 24,
+    "display_name": "Quambee Reserve, North Ringwood"
+  },
+  {
+    "location_id": 36,
+    "club_id": 25,
+    "display_name": "Mullum Reserve, Mullum Mullum Road, Ringwood"
+  },
+  {
+    "location_id": 37,
+    "club_id": 26,
+    "display_name": "Princes Highway Reserve, Oakleigh East"
+  },
+  {
+    "location_id": 38,
+    "club_id": 27,
+    "display_name": "Jubilee Park (Top Oval), Greenwood Drive, Ringwood"
+  },
+  {
+    "location_id": 39,
+    "club_id": 28,
+    "display_name": "Eildon Park, Rowville"
+  },
+  {
+    "location_id": 40,
+    "club_id": 28,
+    "display_name": "Seebeck Oval, Rowville"
+  },
+  {
+    "location_id": 41,
+    "club_id": 29,
+    "display_name": "Liberty Reserve, Rowville"
+  },
+  {
+    "location_id": 42,
+    "club_id": 29,
+    "display_name": "Stud Park Reserve, Rowville"
+  },
+  {
+    "location_id": 43,
+    "club_id": 30,
+    "display_name": "Carrington Park, Knoxfield"
+  },
+  {
+    "location_id": 44,
+    "club_id": 30,
+    "display_name": "Scoresby Recreation Reserve, Scoresby"
+  },
+  {
+    "location_id": 45,
+    "club_id": 31,
+    "display_name": "Narre Warren East Reserve, Berwick Road, Narre Warren East"
+  },
+  {
+    "location_id": 46,
+    "club_id": 32,
+    "display_name": "Eastfield Park, South Croydon"
+  },
+  {
+    "location_id": 47,
+    "club_id": 32,
+    "display_name": "Cheong Park, South Croydon"
+  },
+  {
+    "location_id": 48,
+    "club_id": 33,
+    "display_name": "Batterham Reserve, Boronia"
+  },
+  {
+    "location_id": 49,
+    "club_id": 33,
+    "display_name": "Chandler Reserve, Boronia"
+  },
+  {
+    "location_id": 50,
+    "club_id": 34,
+    "display_name": "Dobson Park, Ferntree Gully"
+  },
+  {
+    "location_id": 51,
+    "club_id": 34,
+    "display_name": "Kings Park, Upper Ferntree Gully"
+  },
+  {
+    "location_id": 52,
+    "club_id": 35,
+    "display_name": "Vermont Junior Football Club, Enter via Sportlink, Hanover Rd"
+  },
+  {
+    "location_id": 53,
+    "club_id": 35,
+    "display_name": "Vermont Recreation Reserve, Vermont"
+  },
+  {
+    "location_id": 54,
+    "club_id": 35,
+    "display_name": "Forest Hill Reserve / Forest Hill Reserve 1"
+  },
+  {
+    "location_id": 55,
+    "club_id": 36,
+    "display_name": "Templeton Reserve, Wantirna South"
+  },
+  {
+    "location_id": 56,
+    "club_id": 36,
+    "display_name": "Wantirna Reserve, Wantirna South"
+  },
+  {
+    "location_id": 57,
+    "club_id": 37,
+    "display_name": "Mt Waverley Reserve, Mt Waverley"
+  },
+  {
+    "location_id": 58,
+    "club_id": 37,
+    "display_name": "Tally Ho Reserve, Mt Waverley"
+  },
+  {
+    "location_id": 59,
+    "club_id": 37,
+    "display_name": "Pinewood Reserve, Mt Waverley"
+  },
+  {
+    "location_id": 60,
+    "club_id": 9,
+    "display_name": "Templestowe Reserve, Templestowe Reserve 1"
+  }
+]

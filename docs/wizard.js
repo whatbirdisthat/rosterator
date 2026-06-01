@@ -231,7 +231,7 @@ function showCompletionScreen(state, onComplete) {
 // ── 4-step progressive flow ───────────────────────────────────────────────
 
 async function showStartFresh(refData, draft, onComplete) {
-  const { clubs, grades, randomNames, roundsTemplate } = refData;
+  const { clubs, grades, randomNames, roundsTemplate, jobs, locations } = refData;
 
   // State
   let selectedClub   = draft?.selectedClub  || null;
@@ -282,6 +282,9 @@ async function showStartFresh(refData, draft, onComplete) {
       <input id="wzPlayerCount" type="number" min="1" max="30" style="width:80px"
              value="${playerCount || ''}">
       <p class="wizard-hint" style="margin-top:4px">We'll pre-fill their names — you can edit them any time under DATA.</p>
+      <div style="margin-top:12px">
+        <button id="wzPlayerNext" class="btn btn-primary wizard-hidden" type="button" style="width:100%">Next →</button>
+      </div>
     </div>
 
     <!-- Step 4: Team name -->
@@ -315,6 +318,8 @@ async function showStartFresh(refData, draft, onComplete) {
     });
     const confirm = document.getElementById('wzConfirm');
     if (confirm) confirm.classList.add('wizard-hidden');
+    const playerNext = document.getElementById('wzPlayerNext');
+    if (playerNext) playerNext.classList.add('wizard-hidden');
   }
 
   function updateCommsHint() {
@@ -401,6 +406,18 @@ async function showStartFresh(refData, draft, onComplete) {
   // ── Step 3: Player count
   function onPlayerCountInput() {
     const val = parseInt(document.getElementById('wzPlayerCount')?.value, 10);
+    const btn = document.getElementById('wzPlayerNext');
+    if (!val || val < 1 || val > 30) {
+      if (btn) btn.classList.add('wizard-hidden');
+      return;
+    }
+    if (btn) btn.classList.remove('wizard-hidden');
+  }
+  document.getElementById('wzPlayerCount').addEventListener('input',  onPlayerCountInput);
+  document.getElementById('wzPlayerCount').addEventListener('change', onPlayerCountInput);
+  document.getElementById('wzPlayerCount').addEventListener('blur',   onPlayerCountInput);
+  document.getElementById('wzPlayerNext').addEventListener('click', () => {
+    const val = parseInt(document.getElementById('wzPlayerCount')?.value, 10);
     if (!val || val < 1 || val > 30) return;
     playerCount = val;
     roster = buildRoster(randomNames, playerCount);
@@ -410,9 +427,7 @@ async function showStartFresh(refData, draft, onComplete) {
     revealStep('wzStep4', '4 / 4');
     updateCommsHint();
     saveDraft({ selectedClub, selectedGrade, playerCount, roster, teamName });
-  }
-  document.getElementById('wzPlayerCount').addEventListener('change', onPlayerCountInput);
-  document.getElementById('wzPlayerCount').addEventListener('blur', onPlayerCountInput);
+  });
 
   // ── Step 4: Team name
   document.getElementById('wzTeamName').addEventListener('input', () => {
@@ -460,8 +475,8 @@ async function showStartFresh(refData, draft, onComplete) {
       round_summary: { rounds: seededRounds },
       reference_data: {
         clubs,
-        locations: [],
-        jobs: [],
+        locations: locations || [],
+        jobs: jobs || [],
         players: roster.map(r => ({ jumper: r.jumper, player_name: r.name })),
         volunteers: roster.map(r => ({
           jumper:        r.jumper,
@@ -516,13 +531,15 @@ export async function showWizard(onComplete) {
   showWizardEl();
 
   // Load all reference data concurrently
-  const [clubs, grades, randomNames, roundsTemplate] = await Promise.all([
+  const [clubs, grades, randomNames, roundsTemplate, jobs, locations] = await Promise.all([
     fetchJson('./data/clubs.json'),
     fetchJson('./data/grades.json'),
     fetchJson('./data/random-names.json'),
     fetchJson('./data/rounds-template.json'),
+    fetchJson('./data/jobs.json'),
+    fetchJson('./data/locations.json'),
   ]);
-  const refData = { clubs, grades, randomNames, roundsTemplate };
+  const refData = { clubs, grades, randomNames, roundsTemplate, jobs, locations };
 
   let restartListener = null;
 

@@ -1,0 +1,51 @@
+[
+  {
+    "job_id": 1,
+    "job_name": "Umpire Escort",
+    "volunteers_required": 1,
+    "subteam": "A",
+    "home_only": false
+  },
+  {
+    "job_id": 2,
+    "job_name": "Umpire Escort",
+    "volunteers_required": 1,
+    "subteam": "B",
+    "home_only": false
+  },
+  {
+    "job_id": 3,
+    "job_name": "Goal Umpire",
+    "volunteers_required": 1,
+    "subteam": "A",
+    "home_only": false
+  },
+  {
+    "job_id": 4,
+    "job_name": "Goal Umpire",
+    "volunteers_required": 1,
+    "subteam": "B",
+    "home_only": false
+  },
+  {
+    "job_id": 5,
+    "job_name": "Timekeeper",
+    "volunteers_required": 1,
+    "subteam": "shared",
+    "home_only": false
+  },
+  {
+    "job_id": 6,
+    "job_name": "Half-time Snacks",
+    "volunteers_required": 1,
+    "subteam": "shared",
+    "home_only": false
+  },
+  {
+    "job_id": 7,
+    "job_name": "BBQ",
+    "volunteers_required": 2,
+    "subteam": "shared",
+    "home_only": true
+  }
+]

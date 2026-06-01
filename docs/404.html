@@ -458,6 +458,10 @@
         </p>
       </div>
 
+      <div class="settings-section" id="settingsVersionSection" style="border-top:1px solid var(--border,#333);padding-top:10px;margin-top:4px">
+        <p id="appVersionLabel" style="font-size:10px;color:var(--muted);text-align:center;letter-spacing:.06em;font-family:monospace;margin:0;line-height:1.8"></p>
+      </div>
+
     </div>
 
     <!-- ── Team Splits ───────────────────────────────────────── -->
@@ -641,9 +645,15 @@
   import * as idb from './idb.js';
   import * as allocator from './allocator.js';
   import { showWizard } from './wizard.js';
+  import { createDataLayer } from './data-layer.mjs';
   window.__idb = idb;
   window.__allocator = allocator;
   window.__showWizard = showWizard;
+  // Compose the data layer. Tests can pre-assign window.__dataLayer via
+  // page.addInitScript() before navigation to inject mocks.
+  if (!window.__dataLayer) {
+    window.__dataLayer = createDataLayer({ idb, allocator });
+  }
 </script>
 <script src="index.js"></script>
 </body>
