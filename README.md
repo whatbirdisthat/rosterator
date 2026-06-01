@@ -1,4 +1,4 @@
-# rosterator
+# rosterator-dev
 
 Deployment-only repository for the rosterator SPA
 
