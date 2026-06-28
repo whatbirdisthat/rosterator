@@ -337,6 +337,61 @@
   --completed: var(--tag-b);
 }
 
+/* Gundam Cockpit — Zeon mobile-suit HUD: gunmetal hull, amber CRT readouts,
+   monoeye-green accents, caution-amber + alert-red warnings. */
+[data-skin="gundam"] {
+  --bg:         #14130f;
+  --bg2:        #1c1a14;
+  --bg3:        #262318;
+  --border:     #38331f;
+  --border2:    #4a432a;
+  --text:       #e6d8b0;
+  --text2:      #b3a880;
+  --muted:      #8a8160;
+  --accent:     #6fe36f;
+  --accent2:    #4cc24c;
+  --warn:       #f2a516;
+  --error:      #e0322a;
+  --confirmed:  #6fe36f;
+  --scheduled:  #5aa9e6;
+  --tag-a:      #5aa9e6;
+  --tag-b:      #c77dff;
+  --tag-shared: #f2a516;
+  --radius:     3px;
+  --font-head:  'DM Mono', monospace;
+  --font-body:  'DM Mono', monospace;
+  --font-size:  13px;
+  --shadow:     0 0 10px rgba(242,165,22,.12), 0 2px 8px rgba(0,0,0,.7);
+  --pill-ok-bg:   #14240f; --pill-ok-fg:   #6fe36f;
+  --pill-warn-bg: #2a1f08; --pill-warn-fg: #f2a516;
+  --pill-err-bg:  #2a0f0c; --pill-err-fg:  #e0322a;
+  --stag-a-bg:  rgba(90,169,230,.1); --stag-b-bg: rgba(199,125,255,.1); --stag-s-bg: rgba(242,165,22,.1);
+  --vtag-pref-bg:  rgba(111,227,111,.08); --vtag-pref-fg:  #6fe36f; --vtag-pref-bd: rgba(111,227,111,.2);
+  --vtag-avoid-bg: rgba(224,50,42,.1);    --vtag-avoid-fg: #e0322a; --vtag-avoid-bd: rgba(224,50,42,.2);
+  --cert-bg: rgba(90,169,230,.12); --cert-fg: #5aa9e6; --cert-bd: rgba(90,169,230,.2);
+  --chip-bg:  rgba(111,227,111,.12); --chip-fg: #6fe36f;
+  --sidebar-bg: #0f0e0a;
+  --sidebar-w:  230px;
+  --dot-confirmed: #6fe36f;
+  --dot-scheduled: #5aa9e6;
+  --hero-bg: #1c1a14;
+  --hero-border: #38331f;
+  /* HI [27] CSS-004/005: status, badge, radius, bye tokens */
+  --danger: var(--error);
+  --ok: var(--confirmed);
+  --info: var(--scheduled);
+  --warn-bg: var(--pill-warn-bg);
+  --warn-fg: var(--pill-warn-fg);
+  --home-badge-bg: var(--pill-warn-bg);
+  --home-badge-fg: var(--pill-warn-fg);
+  --radius-lg: calc(var(--radius) + 4px);
+  --bye-bg: var(--bg3);
+  --bye-fg: var(--muted);
+  --bye-border: var(--border2);
+  /* RLK [round-lock]: completed/locked status colour */
+  --completed: var(--tag-b);
+}
+
 [data-skin="cobalt"] {
   --bg:         #080f1c;
   --bg2:        #0d1a30;
