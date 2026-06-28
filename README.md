@@ -1,13 +1,14 @@
-# rosterator-dev
+# rosterator
 
-Deployment-only repository for the rosterator SPA
+Public **distribution** repository for the Rosterator SPA — the rendered output that
+**Vercel** hosts. This repo is generated, not authored.
 
-Maintained automatically by `make push-rosterator` in FootyManager.
-Do not edit files here directly -- all source changes happen in FootyManager.
+- **Source of truth:** the private FootyManager repo. All code & data changes happen there.
+- **How it's updated:** `make deploy-dev` / `make deploy-prod` in FootyManager render the
+  built SPA into `docs/` here and push (`dev` = Vercel preview, `main` = Vercel production).
+- **Do not edit `docs/` by hand** — it is overwritten on every deploy.
 
-Live:
-- GitHub Pages: https://whatbirdisthat.github.io/rosterator
-- Vercel: https://rosterator.vercel.app
+Hosting is **Vercel only** (see `vercel.json`: `outputDirectory: docs`, SPA rewrite to
+`/index.html`). GitHub Pages is no longer used.
 
-
-
+Live: https://rosterator.vercel.app
