@@ -260,7 +260,9 @@
                 <div class="print-preview-wrap">
                   <div class="print-preview" id="printPreview"></div>
                 </div>
-                <div id="printBtn" style="margin-top:8px">
+                <div id="printBtn" class="detail-btn-group" style="margin-top:8px">
+                  <button class="btn breadcrumb-action" id="btnReallocate">Re-allocate</button>
+                  <button class="btn breadcrumb-action" id="btnViewTeamSplits">Splits</button>
                   <button class="btn" data-action="print">
                     <svg viewBox="0 0 16 16" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round"><path d="M4 5V2h8v3"/><rect x="1" y="5" width="14" height="8" rx="1"/><path d="M4 13v3h8v-3"/></svg>
                     Print A4
@@ -274,8 +276,6 @@
                 <div class="email-panel">
                   <div class="email-panel-head">
                     <span>To: parent group</span>
-                    <button class="btn breadcrumb-action" id="btnReallocate">Re-allocate</button>
-                    <button class="btn breadcrumb-action" id="btnViewTeamSplits">Splits</button>
                     <button class="btn" id="btnCopyDetail">Copy</button>
                   </div>
                   <pre class="rs-copyblock" id="detailCopyblock"></pre>
@@ -285,6 +285,10 @@
                 </div>
               </div>
             </div>
+
+            <!-- Manual allocation — mirrors the A4 preview's swap controls so
+                 allocations can be changed where the preview is hidden (mobile). -->
+            <div id="manualAllocPanel" class="manual-alloc-panel"></div>
           </div>
 
           <!-- Action buttons — screen only, hidden on print -->

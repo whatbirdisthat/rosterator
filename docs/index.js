@@ -1,4 +1,4 @@
-window.__APP_VERSION = "0.31.56";
+window.__APP_VERSION = "0.31.59";
 'use strict';
 
 // ── Module imports (CLM-004/005/006: single source of truth) ──────────────
@@ -623,6 +623,10 @@ function openEditMode(r) {
         <span class="edit-form-label">Home/Away</span>
         ${haTogglePill(round)}
       </div>
+      ${round.home_away === 'B' ? '' : `<div id="editTypeRow" class="edit-form-row">
+        <span class="edit-form-label">Round type</span>
+        ${roundTypePill(round)}
+      </div>`}
       <div class="edit-form-row">
         <span class="edit-form-label">Time</span>
         <input type="time" id="editTime" value="${timeVal}">
@@ -820,7 +824,7 @@ function renderDashboard() {
   document.getElementById('dashHeadline').textContent =
     `${dayName} looks ${ featRound.status === 'confirmed' ? 'handled.' : 'scheduled.' }`;
   document.getElementById('dashMeta').textContent =
-    `Round ${featRound.round} of ${totalRounds} · vs. ${resolveOpposition(featRound)} · ${resolveLocation(featRound)} · ${fmtTime(featRound.time)} bounce`;
+    `Round ${featRound.round} of ${totalRounds} · vs. ${resolveOpposition(featRound)} · ${resolveLocation(featRound)} · ${fmtArrival(featRound.time)}`;
 
   // Hero
   const thisLabel = dateObj ? dateObj.toLocaleDateString('en-AU', { weekday: 'long' }).toUpperCase() : 'THIS ROUND';
@@ -828,7 +832,7 @@ function renderDashboard() {
   document.getElementById('dashRoundChip').textContent = `Round ${featRound.round}`;
   document.getElementById('dashHeroTitle').textContent = fmtDate(featRound.date);
   document.getElementById('dashHeroMeta').textContent =
-    `vs. ${resolveOpposition(featRound)} · ${resolveLocation(featRound)} · ${fmtTime(featRound.time)} bounce`;
+    `vs. ${resolveOpposition(featRound)} · ${resolveLocation(featRound)} · ${fmtArrival(featRound.time)}`;
   document.getElementById('dashHeroPill').innerHTML =
     `<span class="status-pill ${featRound.status === 'confirmed' ? 'ok' : 'warn'}">${featRound.status === 'confirmed' ? 'Confirmed' : 'Scheduled'}</span>` +
     (homeAwayLabel(featRound) ? ` ${haTogglePill(featRound)}` : '');
@@ -1112,7 +1116,7 @@ function renderRoundDetail() {
   const dayStr  = r.date ? new Date(r.date + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'short' }) : '';
   document.getElementById('detailTitle').textContent = `${dayStr} ${dateStr} · vs. ${resolveOpposition(r)}`;
   document.getElementById('detailSub').textContent =
-    `${resolveLocation(r)} · ${fmtTime(r.time)} bounce`;
+    `${resolveLocation(r)} · ${fmtArrival(r.time)}`;
   const _notesEl = document.getElementById('detailNotes');
   if (_notesEl) {
     _notesEl.textContent = r.extra_notes || '';
@@ -1126,6 +1130,9 @@ function renderRoundDetail() {
 
   // Build print preview
   buildPrintPreview(r);
+
+  // Build the mobile/narrow manual-allocation panel (mirrors the preview's swaps)
+  buildManualAllocPanel(r);
 
   // Build email text
   const plainText = buildEmailText(r);
@@ -1284,6 +1291,39 @@ function buildPrintPreview(r) {
     </div>`;
 }
 
+// P3: manual-allocation panel — one row per slot with a swap control, reusing the
+// same `open-vol-swap` flow as the A4 preview. Gives a way to change allocations on
+// mobile/narrow screens where the print-preview panel is hidden.
+function buildManualAllocPanel(r) {
+  const el = document.getElementById('manualAllocPanel');
+  if (!el) return;
+  const entries = (r && r.home_away !== 'B' && r.entries) ? r.entries : [];
+  if (entries.length === 0) { el.innerHTML = ''; return; }
+  const locked = isRoundLocked(r);
+  const rows = entries.map(e => {
+    const roundEsc   = escHtml(String(r.round));
+    const jobEsc     = escHtml(e.job || '');
+    const subteamEsc = escHtml(e.subteam || 'shared');
+    const slotIdx    = e.slot_index ?? 0;
+    const labelExtra = (e.subteam && e.subteam !== 'shared') ? ` (${escHtml(e.subteam)})` : '';
+    const filled = e.slot_status !== 'unfilled' && e.jumper;
+    const who = filled
+      ? `<span class="ma-jumper">#${escHtml(String(e.jumper))}</span> <span class="ma-vol">${escHtml(resolveVolunteerName(e))}</span>`
+      : '<span class="ma-unfilled">⚠ unfilled</span>';
+    const swapAttrs = `data-action="open-vol-swap" data-round="${roundEsc}" data-job="${jobEsc}" data-subteam="${subteamEsc}" data-slot="${slotIdx}"`;
+    const swapBtn = locked
+      ? ''
+      : `<button class="vol-swap-btn ma-swap${filled ? '' : ' unfilled'}" ${swapAttrs} title="Change volunteer">${filled ? '&#8644; swap' : 'assign'}</button>`;
+    return `<div class="ma-row">
+      <div class="ma-job">${escHtml(e.job)}${labelExtra}</div>
+      <div class="ma-who">${who}</div>
+      ${swapBtn}
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div class="detail-panel-label">Manual allocation</div>
+    <div class="ma-list">${rows}</div>`;
+}
+
 function buildEmailText(r) {
   if (r.home_away === 'B') {
     return `Round ${r.round} · ${fmtDate(r.date)} · BYE\n\nNo game this round. No volunteers required.`;
@@ -1301,7 +1341,7 @@ function buildEmailText(r) {
   const dateStr = fmtDate(r.date);
   const _haText = r.home_away === 'h' ? 'HOME' : r.home_away === 'a' ? 'AWAY' : '';
   const header  = `R${r.round} · vs ${resolveOpposition(r)}${_haText ? ' · ' + _haText : ''} · (${(r.status || '').toLowerCase()})`;
-  const dateLine = `${dateStr}${r.time ? ' ' + fmtTime(r.time) + ' bounce' : ''}`;
+  const dateLine = `${dateStr}${r.time ? ' ' + fmtArrival(r.time) : ''}`;
   const locLine  = resolveLocation(r) || null;
 
   const lines = [];
@@ -1708,6 +1748,27 @@ function renderTeamSplits() {
 
   const sortedPlayers = [...players].sort((a, b) => Number(a.jumper) - Number(b.jumper));
 
+  // RT-006: FULL_TEAM round → one flat IN/OUT roster (no A/B groups, no drag).
+  const activeRoundObj = allRounds.find(r => String(r.round) === activeRound);
+  if (String(activeRoundObj?.round_type || '').toUpperCase() === 'FULL_TEAM') {
+    const rows = sortedPlayers.map(p => {
+      const absent = absenceSet.has(String(p.jumper));
+      const jEsc = escHtml(String(p.jumper));
+      return `<div class="tsp-player-row${absent ? ' tsp-absent' : ''}" data-jumper="${jEsc}">
+        <span class="jumper-chip">#${jEsc}</span>
+        <span class="tsp-player-name">${escHtml(p.player_name || '')}</span>
+        <button class="tsp-inout-btn ${absent ? 'out' : 'in'}" data-action="tsp-toggle-inout" data-round="${escHtml(activeRound)}" data-jumper="${jEsc}">${absent ? 'OUT' : 'IN'}</button>
+      </div>`;
+    }).join('');
+    content.innerHTML = `<div class="tsp-fullteam-note">Full-team round — no A/B split. Tap a player to toggle IN / OUT.</div>
+      <div class="tsp-group" data-subteam="full">
+        <div class="tsp-group-label">Full team</div>
+        ${rows}
+        <div class="tsp-group-summary">${sortedPlayers.length} player${sortedPlayers.length !== 1 ? 's' : ''}</div>
+      </div>`;
+    return;
+  }
+
   // Group players by effective subteam
   const groups = {};
   for (const p of sortedPlayers) {
@@ -1758,6 +1819,12 @@ function renderTeamSplits() {
 // attributes that action needs. event.target.closest('[data-action]') resolves
 // the innermost actionable element, so nested pills never trigger their parent.
 function cycleLineupCell(round, jumper, current) {
+  // RT-005: FULL_TEAM rounds toggle IN ⇄ OUT only (no subteam).
+  if (roundTypeOf(round) === 'FULL_TEAM') {
+    dispatch({ type: 'toggle-player-absent', payload: { round, jumper } });
+    renderLineup();
+    return;
+  }
   if (current === 'A') {
     dispatch({ type: 'set-split', payload: { round, jumper, subteam: 'B' } });
   } else if (current === 'B') {
@@ -1778,6 +1845,8 @@ function handleGlobalClick(ev) {
     case 'open-round':       openRoundDetail(d.round); break;
     case 'confirm-round':    confirmRoundFromList(d.round); break;
     case 'toggle-ha':        toggleHomeAway(d.round); break;
+    case 'toggle-round-type': toggleRoundType(d.round); break;
+    case 'tsp-toggle-inout': dispatch({ type: 'toggle-player-absent', payload: { round: d.round, jumper: d.jumper } }); renderTeamSplits(); break;
     case 'close-edit':       closeEditMode(); break;
     case 'save-round-edit':  saveRoundEdit(d.round); break;
     // Volunteers
@@ -2193,6 +2262,21 @@ function fmtTime(isoStr) {
   return d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
+// Format the round time shifted by deltaMin (tz-consistent with fmtTime).
+function fmtTimeShifted(isoStr, deltaMin) {
+  if (!isoStr) return '—';
+  const d = new Date(isoStr);
+  if (isNaN(d)) return '—';
+  d.setMinutes(d.getMinutes() + deltaMin);
+  return d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+// Arrival/start line: "{30 min before} ({start} start)" — players arrive 30 min early.
+function fmtArrival(isoStr) {
+  if (!isoStr) return '';
+  return `${fmtTimeShifted(isoStr, -30)} (${fmtTime(isoStr)} start)`;
+}
+
 // CPT: resolves true when the copy succeeds, false otherwise — so callers can
 // show the success toast only on a real write.
 async function copyToClipboard(text) {
@@ -2231,6 +2315,23 @@ function haTogglePill(r) {
     return `<span class="ha-pill bye">${label.text}</span>`;
   }
   return `<span class="ha-pill ${label.cls}" role="button" tabindex="0" style="cursor:pointer;user-select:none" data-action="toggle-ha" data-round="${escHtml(String(r.round))}" aria-label="Toggle home/away for round ${escHtml(String(r.round))} (currently ${label.text})">${label.text}</span>`;
+}
+
+// RT-001: a round's split type (default SPLIT). FULL_TEAM rounds need only one
+// Goal Umpire + Umpire Escort and use IN/OUT (no A/B) in the lineup/splits UIs.
+function roundTypeOf(roundNum) {
+  const r = getRoundByNum(roundNum);
+  return String(r?.round_type || '').toUpperCase() === 'FULL_TEAM' ? 'FULL_TEAM' : 'SPLIT';
+}
+
+// RT-004: edit-form pill to toggle SPLIT ⇄ FULL_TEAM (mirrors haTogglePill).
+// Like home/away, the change takes effect on the next Re-allocate. BYE has no teams.
+function roundTypePill(r) {
+  if (r.home_away === 'B') return '';
+  const isFull = String(r.round_type || '').toUpperCase() === 'FULL_TEAM';
+  const text = isFull ? 'Full team' : 'Split (A/B)';
+  const cls = isFull ? 'rt-full' : 'rt-split';
+  return `<span class="ha-pill ${cls}" role="button" tabindex="0" style="cursor:pointer;user-select:none" data-action="toggle-round-type" data-round="${escHtml(String(r.round))}" aria-label="Toggle round type for round ${escHtml(String(r.round))} (currently ${text}); re-allocate to apply">${text}</span>`;
 }
 
 function toggleHomeAway(roundNum) {
@@ -2282,6 +2383,24 @@ function toggleHomeAway(roundNum) {
 
 }
 
+// RT-004: flip a round's SPLIT ⇄ FULL_TEAM. Like toggleHomeAway, this persists the
+// field and updates the edit-form row in place; the slot counts change on Re-allocate.
+function toggleRoundType(roundNum) {
+  const r = getRoundByNum(roundNum);
+  if (!r || r.home_away === 'B') return;
+  const newType = String(r.round_type || '').toUpperCase() === 'FULL_TEAM' ? 'SPLIT' : 'FULL_TEAM';
+  dispatch({ type: 'save-round-edit', payload: { roundNum: String(roundNum), updates: { round_type: newType } } });
+
+  const editForm = document.getElementById('roundEditForm');
+  const inEditMode = editForm && editForm.style.display !== 'none' && editForm.innerHTML.length > 0;
+  if (inEditMode) {
+    const typeRow = document.getElementById('editTypeRow');
+    if (typeRow) typeRow.innerHTML = `<span class="edit-form-label">Round type</span>${roundTypePill(getRoundByNum(roundNum))}`;
+  } else {
+    render();
+  }
+}
+
 function saveUserTeam() {
   if (_renderingSettings) return;
   const data = getData();
@@ -2330,9 +2449,11 @@ function renderLineup() {
   const colHeaders = rounds.map(r => {
     const haClass = r.home_away === 'h' ? 'home' : r.home_away === 'a' ? 'away' : '';
     const haLabel = r.home_away === 'h' ? 'HOME' : r.home_away === 'a' ? 'AWAY' : '';
+    const fullTeam = String(r.round_type || '').toUpperCase() === 'FULL_TEAM';
     return `<th class="lineup-th-round" title="${escHtml(resolveOpposition(r))}">
       <div>Rd ${escHtml(String(r.round))}</div>
       ${haLabel ? `<div class="ha-pill ${haClass}" style="font-size:9px;padding:1px 3px;">${haLabel}</div>` : ''}
+      ${fullTeam ? '<div class="lineup-fullteam-tag" title="Full-team round — IN/OUT">FULL</div>' : ''}
     </th>`;
   }).join('');
 
@@ -2340,7 +2461,9 @@ function renderLineup() {
     const cells = rounds.map(r => {
       const key = `${r.round}|${p.jumper}`;
       const absent = absenceSet.has(key);
-      const current = absent ? 'OUT' : (splitMap[key] || 'A');
+      // RT-005: FULL_TEAM rounds use IN/OUT (no A/B subteam); SPLIT uses A/B/OUT.
+      const fullTeam = String(r.round_type || '').toUpperCase() === 'FULL_TEAM';
+      const current = absent ? 'OUT' : (fullTeam ? 'IN' : (splitMap[key] || 'A'));
       const rEsc = escHtml(String(r.round));
       const jEsc = escHtml(String(p.jumper));
       // Delegated cycle handler reads data-current to know which transition to apply.
@@ -2372,6 +2495,7 @@ function renderLineup() {
       <p><strong>Tap any cell</strong> to cycle a player's slot:</p>
       <p class="lineup-guide-cycle">A &rarr; B &rarr; OUT &rarr; A</p>
       <p><strong>A</strong> and <strong>B</strong> assign the player&rsquo;s subteam &mdash; used for Goal Umpire and Umpire Escort slots.</p>
+      <p><strong>FULL</strong> rounds (full team, not split) toggle <strong>IN &rarr; OUT</strong> only &mdash; no A/B.</p>
       <p><strong>OUT</strong> marks the player absent. Their volunteer is excluded from all volunteer slots that round.</p>
       <p>Once the lineup is set, tap <strong>Re-allocate</strong> to apply your changes.</p>
       <p class="lineup-guide-dismiss">Tap anywhere to close.</p>

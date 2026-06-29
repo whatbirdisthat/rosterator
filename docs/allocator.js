@@ -126,10 +126,13 @@ export function parseSplit(row) {
 }
 
 export function parseRound(row) {
+  const rawType = cleanMetadata(row.round_type || '').toUpperCase();
   return {
     round_id: cleanMetadata(row.round),
     date: cleanMetadata(row.date),
     home_away: cleanMetadata(row.home_away),
+    // RT-001: SPLIT (default) vs FULL_TEAM. Blank/legacy/unknown → SPLIT.
+    round_type: rawType === 'FULL_TEAM' ? 'FULL_TEAM' : 'SPLIT',
   };
 }
 
@@ -544,12 +547,34 @@ function buildAssignments(ctx, names) {
 // Slot Building
 // ────────────────────────────────────────────────────────────────────────────
 
-function slotsForRound(jobs, homeAway) {
+// RT-002: collapse subteam A/B variants of a job into a single `shared` slot.
+// For FULL_TEAM rounds the team is not split, so Umpire Escort + Goal Umpire need
+// only one volunteer each (subteam `shared` → any eligible). `shared` jobs pass through.
+function collapseSplitJobs(jobs) {
+  const collapsed = [];
+  const seenSplit = new Set();
+  for (const job of jobs) {
+    const st = String(job.subteam || '').trim().toLowerCase();
+    if (st === 'a' || st === 'b') {
+      if (seenSplit.has(job.name)) continue;
+      seenSplit.add(job.name);
+      collapsed.push({ ...job, subteam: 'shared' });
+    } else {
+      collapsed.push(job);
+    }
+  }
+  return collapsed;
+}
+
+function slotsForRound(jobs, homeAway, roundType = 'SPLIT') {
   if (homeAway.trim().toUpperCase() === 'B') {
     return [];
   }
+  const effectiveJobs = String(roundType || 'SPLIT').toUpperCase() === 'FULL_TEAM'
+    ? collapseSplitJobs(jobs)
+    : jobs;
   const result = [];
-  for (const job of jobs) {
+  for (const job of effectiveJobs) {
     if (!isJobApplicableForRound(job, homeAway)) {
       continue;
     }
@@ -779,7 +804,7 @@ export function rebalanceFutureRounds(data, options = {}) {
 
     // Pending rounds: allocate
     const isHome = roundDef.home_away.trim().toLowerCase() === 'h';
-    const slots = slotsForRound(jobs, roundDef.home_away);
+    const slots = slotsForRound(jobs, roundDef.home_away, roundDef.round_type);
 
     // Build look-ahead specs for remaining pending rounds
     const pendingSpecs = [];
@@ -790,7 +815,7 @@ export function rebalanceFutureRounds(data, options = {}) {
       for (let i = currentIdx + 1; i < pendingRoundDefs.length; i++) {
         const futureRound = pendingRoundDefs[i];
         const futureDef = parseRound(futureRound);
-        const futureSlots = slotsForRound(jobs, futureDef.home_away);
+        const futureSlots = slotsForRound(jobs, futureDef.home_away, futureDef.round_type);
         const futureIsHome = futureDef.home_away.trim().toLowerCase() === 'h';
         pendingSpecs.push(
           buildPendingRoundSpec(

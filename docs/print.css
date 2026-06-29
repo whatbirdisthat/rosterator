@@ -3,7 +3,7 @@
   body { display: block; }
   #sidebar, #content > .panel:not(#panel-rounds), .breadcrumb-back,
   .action-bar, .page-title-row .action-bar,
-  #emailCol, #printBtn, #detailActions,
+  #emailCol, #printBtn, #detailActions, #manualAllocPanel,
   #snapshotToast, .detail-panel-label { display: none !important; }
   .pp-club-sub .ha-pill { display: none !important; }
   .pp-initials { display: none !important; }
