@@ -19,3 +19,20 @@ export function escHtml(str) {
 export function copyToastMessage() {
   return '✓ Copied.';
 }
+
+/**
+ * Make a job header agree with its slot count: singular when 1, plural when >1.
+ * count<=1 keeps the job's canonical name. count>1 appends "s", EXCEPT names that
+ * already end in "s" (e.g. "Half-time Snacks") or all-caps acronyms (e.g. "BBQ"),
+ * which are left unchanged so they read naturally.
+ * @param {string} name  the job name (canonical/singular role name)
+ * @param {number} count number of slots in the group
+ * @returns {string}
+ */
+export function pluralizeJob(name, count) {
+  const base = String(name == null ? '' : name);
+  if (count <= 1) return base;
+  if (/s$/i.test(base)) return base;
+  if (/^[A-Z0-9]+$/.test(base)) return base; // acronym (BBQ)
+  return base + 's';
+}

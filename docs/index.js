@@ -1,4 +1,4 @@
-window.__APP_VERSION = "0.31.59";
+window.__APP_VERSION = "0.31.60";
 'use strict';
 
 // ── Module imports (CLM-004/005/006: single source of truth) ──────────────
@@ -6,7 +6,7 @@ window.__APP_VERSION = "0.31.59";
 // The pure state logic lives in store-reducer.mjs; the view-model derivation in
 // store-selectors.mjs; the HTML-escape utility in utils.mjs. The wrappers below
 // inject getState() so this file's call sites stay unchanged.
-import { escHtml, copyToastMessage } from './utils.mjs';
+import { escHtml, copyToastMessage, pluralizeJob } from './utils.mjs';
 import { reduceState, initialUiState, buildStoreState, deepClone, deepFreeze } from './store-reducer.mjs';
 import * as Sel from './store-selectors.mjs';
 import { isRoundLocked, nextLockStatus, roundStatusPill } from './round-status.mjs';
@@ -1329,11 +1329,12 @@ function buildEmailText(r) {
     return `Round ${r.round} · ${fmtDate(r.date)} · BYE\n\nNo game this round. No volunteers required.`;
   }
 
-  const _GROUPED = { 'Umpire Escort': 'Umpire Escorts', 'Goal Umpire': 'Goal Umpires' };
+  // Group by base job name so SPLIT umpire A+B (and BBQ's two slots) collapse into
+  // one header; the header is then pluralised to match the slot count (RT/plurality).
   const entries = r.entries || [];
   const jobMap = new Map();
   entries.forEach(e => {
-    const key = _GROUPED[e.job] || e.job_label || e.job || '(unknown job)';
+    const key = e.job || e.job_label || '(unknown job)';
     if (!jobMap.has(key)) jobMap.set(key, []);
     jobMap.get(key).push(e);
   });
@@ -1345,8 +1346,8 @@ function buildEmailText(r) {
   const locLine  = resolveLocation(r) || null;
 
   const lines = [];
-  jobMap.forEach((slots, jobLabel) => {
-    lines.push(jobLabel + ':');
+  jobMap.forEach((slots, jobName) => {
+    lines.push(pluralizeJob(jobName, slots.length) + ':');
     slots.forEach(e => {
       if (e.slot_status === 'unfilled' || !e.jumper) {
         lines.push('  *** UNFILLED ***');
