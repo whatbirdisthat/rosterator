@@ -1,4 +1,4 @@
-window.__APP_VERSION = "0.31.53";
+window.__APP_VERSION = "0.31.56";
 'use strict';
 
 // ── Module imports (CLM-004/005/006: single source of truth) ──────────────
@@ -15,6 +15,7 @@ import {
   encodeRowRef, resolveRecordForEdit,
   normalizeJobNames, serializeJobNames,
 } from './data-records.mjs';
+import { createPersistenceCoordinator } from './persistence-coordinator.mjs';
 
 // ── Allocator global (loaded in index.html as ES module) ──────────────────
 // Read lazily at call time — the ES module may not have executed yet at load.
@@ -56,20 +57,56 @@ function getData() {
   return SPA_STORE.getData();
 }
 
+// ── Persistence coordinator (OFF-005a/c/d/e/f) ─────────────────────────────
+// Serializes + coalesces snapshot writes (latest wins, never interleaved),
+// exposes a settle signal, and surfaces persistent failures — replacing the old
+// fire-and-forget save that lost the last write on an immediate reload. Lazily
+// bound to the active persistence impl (set on window.__dataLayer before this
+// module runs).
+let _persistCoordinator = null;
+function _getPersistCoordinator() {
+  if (_persistCoordinator) return _persistCoordinator;
+  const _persist = window.__dataLayer?.persistence;
+  if (!_persist) return null;
+  _persistCoordinator = createPersistenceCoordinator(
+    (data) => _persist.save(data),
+    { onError: onPersistFailure },
+  );
+  return _persistCoordinator;
+}
+
+// OFF-005a/c: queue the latest snapshot for a durable write (non-blocking).
+function persist(data) {
+  const co = _getPersistCoordinator();
+  if (co && data) co.enqueue(data);
+}
+
+// OFF-005d: resolves once the latest mutation is durably persisted (or given up).
+function whenPersisted() {
+  return _persistCoordinator ? _persistCoordinator.whenSettled() : Promise.resolve();
+}
+
+// OFF-005e: force-drain pending writes (used on tab hide / close).
+function flushPersistence() {
+  return _persistCoordinator ? _persistCoordinator.flush() : Promise.resolve();
+}
+
+// OFF-005f: surface a persistent save failure to the user (don't swallow it).
+let _lastPersistErrorAt = 0;
+function onPersistFailure(err, failures) {
+  console.warn('[offline] IDB save failed after dispatch', err, `(failure #${failures})`);
+  // Throttle so a burst of failures shows at most one toast per 4s.
+  const now = Date.now();
+  if (now - _lastPersistErrorAt > 4000) {
+    _lastPersistErrorAt = now;
+    try { showToast("Couldn't save your latest change — it may be lost if you reload", 'error'); } catch (_) {}
+  }
+}
+
 function dispatch(action) {
   const result = SPA_STORE.dispatch(action);
-
-  // OFF-005a: Persist mutations to IDB
-  const _persist = window.__dataLayer?.persistence;
-  if (_persist) {
-    const data = getData();
-    if (data) {
-      _persist.save(data).catch(err => {
-        console.warn('[offline] IDB save failed after dispatch', err);
-      });
-    }
-  }
-
+  // OFF-005a/c: persist the new snapshot via the coordinator (serialized + coalesced).
+  persist(getData());
   return result;
 }
 
@@ -90,7 +127,7 @@ function assertConsistency() {
   return { ok: mismatches.length === 0, mismatches };
 }
 
-window.__rosterSpa = { getState, getData, dispatch, assertConsistency };
+window.__rosterSpa = { getState, getData, dispatch, assertConsistency, whenPersisted, flushPersistence };
 
 // ── Global surface (CLM-008) ───────────────────────────────────────────────
 // index.js is an ES module, so its top-level functions are module-scoped rather
@@ -331,7 +368,7 @@ async function initStore() {
         render();
         document.getElementById('app').classList.add('show');
         hideLoading();
-        if (_persist) { _persist.save(data).catch(() => {}); }
+        persist(data);   // route through the coordinator (OFF-005c)
         return;
       }
     } catch (_) { /* no server — fall through to wizard */ }
@@ -341,7 +378,7 @@ async function initStore() {
   if (!_idbAvailable) return;
   hideLoading();
   window.__showWizard(async (state) => {
-    if (_persist) await _persist.save(state);
+    persist(state); await whenPersisted();   // durable before continuing (OFF-005a/d)
     dispatch({ type: 'load-report', payload: { filename: 'from-wizard', report: state } });
     render();
     document.getElementById('app').classList.add('show');
@@ -354,6 +391,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupGlobalDelegation();
   syncMobileLayoutClass();
   window.addEventListener('resize', syncMobileLayoutClass);
+  // OFF-005e: best-effort flush of pending IDB writes when the tab is hidden or
+  // closed, so the last change isn't lost if the user navigates away immediately.
+  window.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushPersistence();
+  });
+  window.addEventListener('pagehide', () => { flushPersistence(); });
   setupNav();
   setupSettings();
   setupTeamSplits();
@@ -2021,8 +2064,7 @@ function handleTmDataImport() {
 
       if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
 
-      const _persistImport = window.__dataLayer?.persistence;
-      if (_persistImport) await _persistImport.save(parsed);
+      persist(parsed); await whenPersisted();   // durable before continuing (OFF-005a/d)
       dispatch({ type: 'load-report', payload: { filename: 'from-import', report: parsed } });
       render();
     } catch (err) {
