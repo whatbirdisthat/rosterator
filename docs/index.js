@@ -1,4 +1,4 @@
-window.__APP_VERSION = "0.31.61";
+window.__APP_VERSION = "0.31.62";
 'use strict';
 
 // ── Module imports (CLM-004/005/006: single source of truth) ──────────────
@@ -1154,11 +1154,8 @@ function renderRoundDetail() {
   document.getElementById('detailTitle').textContent = `${dayStr} ${dateStr} · vs. ${resolveOpposition(r)}`;
   document.getElementById('detailSub').textContent =
     `${resolveLocation(r)} · ${fmtArrival(r.time)}`;
-  const _notesEl = document.getElementById('detailNotes');
-  if (_notesEl) {
-    _notesEl.textContent = r.extra_notes || '';
-    _notesEl.classList.toggle('hidden', !r.extra_notes);
-  }
+  // The round note is shown only inside the A4 print preview (.pp-notes); the former
+  // inline #detailNotes element (between date/time and the buttons) was a duplicate.
   // RLK-006: status pill (Completed / Confirmed / Scheduled) via the pure helper.
   const pill = roundStatusPill(r.status);
   document.getElementById('detailPill').innerHTML =

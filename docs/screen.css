@@ -1805,13 +1805,6 @@ table.constraint-table tbody tr:hover td { background: var(--bg2); }
 /* ═══════════════════════════════════════════════════════════════
    US-01 — Round notes
    ═══════════════════════════════════════════════════════════════ */
-.detail-notes {
-  margin-top: 6px;
-  font-style: italic;
-  color: var(--text2);
-  font-size: 13px;
-  padding: 4px 0;
-}
 .pp-notes {
   margin: 8px 0 12px;
   padding: 7px 12px;
