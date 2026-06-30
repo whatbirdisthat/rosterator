@@ -249,6 +249,8 @@ export function selectSettingsViewModel(state) {
     selectedClubId: data.user_team?.club_id || '',
     teamName: data.user_team?.team_name || '',
     printFooter: data.ui_preferences?.print_footer ?? '',
+    emailPrefix: data.ui_preferences?.email_prefix ?? '',
+    emailSuffix: data.ui_preferences?.email_suffix ?? '',
   };
 }
 

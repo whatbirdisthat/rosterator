@@ -253,20 +253,28 @@
 
             <div id="roundEditForm"></div>
 
+            <!-- Action buttons — same style, above the panels -->
+            <div id="printBtn" class="detail-btn-group">
+              <button class="btn" id="btnReallocate">
+                <svg viewBox="0 0 16 16"><path d="M13.6 6.5A5.5 5.5 0 1 0 14 9"/><path d="M14 2.5V6h-3.5"/></svg>
+                <span class="btn-label">Re-allocate</span>
+              </button>
+              <button class="btn" id="btnViewTeamSplits">
+                <svg viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="5" height="11" rx="1"/><rect x="9.5" y="2.5" width="5" height="11" rx="1"/></svg>
+                <span class="btn-label">Splits</span>
+              </button>
+              <button class="btn" data-action="print">
+                <svg viewBox="0 0 16 16"><path d="M4 5V2h8v3"/><rect x="1" y="5" width="14" height="8" rx="1"/><path d="M4 13v3h8v-3"/></svg>
+                <span class="btn-label">Print A4</span>
+              </button>
+            </div>
+
             <div class="detail-layout">
               <!-- Print preview -->
               <div>
                 <div class="detail-panel-label">Print Preview · A4</div>
                 <div class="print-preview-wrap">
                   <div class="print-preview" id="printPreview"></div>
-                </div>
-                <div id="printBtn" class="detail-btn-group" style="margin-top:8px">
-                  <button class="btn breadcrumb-action" id="btnReallocate">Re-allocate</button>
-                  <button class="btn breadcrumb-action" id="btnViewTeamSplits">Splits</button>
-                  <button class="btn" data-action="print">
-                    <svg viewBox="0 0 16 16" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round"><path d="M4 5V2h8v3"/><rect x="1" y="5" width="14" height="8" rx="1"/><path d="M4 13v3h8v-3"/></svg>
-                    Print A4
-                  </button>
                 </div>
               </div>
 
@@ -280,7 +288,7 @@
                   </div>
                   <pre class="rs-copyblock" id="detailCopyblock"></pre>
                   <div class="email-footer" id="detailEmailFooter">
-                    Names are added here in your browser just before copy — the allocator export only stores jumper numbers. Any saved snapshot goes to your local server only.
+                    Copy this text and paste it into your team chat or weekly email 🙂 save your thumbs!
                   </div>
                 </div>
               </div>
@@ -429,6 +437,21 @@
         </div>
         <p style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.5">
           Appears on the right side of the A4 print preview footer.
+        </p>
+        <div class="settings-row settings-row-stacked">
+          <span class="settings-label" id="emailPrefixLabel">Email prefix</span>
+          <textarea class="settings-input settings-textarea" id="emailPrefixInput" rows="2"
+            aria-labelledby="emailPrefixLabel"
+            placeholder="Lines added to the top of the email-ready text"></textarea>
+        </div>
+        <div class="settings-row settings-row-stacked">
+          <span class="settings-label" id="emailSuffixLabel">Email suffix</span>
+          <textarea class="settings-input settings-textarea" id="emailSuffixInput" rows="2"
+            aria-labelledby="emailSuffixLabel"
+            placeholder="Lines added to the bottom of the email-ready text"></textarea>
+        </div>
+        <p style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.5">
+          Prefix/suffix lines wrap the copyable email-ready text (e.g. a greeting and a sign-off).
         </p>
       </div>
 

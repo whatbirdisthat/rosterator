@@ -1517,7 +1517,7 @@ table.matrix tr.tr-bye:hover td { background: var(--bg2); }
 
 /* P2: Re-allocate + Splits grouped with Print A4 (kept out of the email header so
    Copy is always reachable on narrow/mobile screens). */
-.detail-btn-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.detail-btn-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
 
 /* P3: manual-allocation panel (mobile/narrow) */
 .manual-alloc-panel { margin-top: 20px; }
@@ -1739,6 +1739,11 @@ table.constraint-table tbody tr:hover td { background: var(--bg2); }
 }
 .settings-select:focus,
 .settings-input:focus { border-color: var(--accent); }
+/* Stacked rows (label above a multi-line textarea) for email prefix/suffix */
+.settings-row-stacked { flex-direction: column; align-items: stretch; gap: 6px; }
+.settings-textarea {
+  max-width: none; width: 100%; resize: vertical; min-height: 44px; line-height: 1.5;
+}
 
 .stat-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap: 10px;

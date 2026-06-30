@@ -1,4 +1,4 @@
-window.__APP_VERSION = "0.31.60";
+window.__APP_VERSION = "0.31.61";
 'use strict';
 
 // ── Module imports (CLM-004/005/006: single source of truth) ──────────────
@@ -119,10 +119,17 @@ function assertConsistency() {
   if (teamName && sbName && sbName !== teamName) {
     mismatches.push({ field: 'user_team.team_name', displayed: sbName, stored: teamName });
   }
-  const printFooter = data.ui_preferences?.print_footer ?? '';
-  const pfInput = document.getElementById('printFooterInput');
-  if (pfInput && pfInput.value !== printFooter) {
-    mismatches.push({ field: 'ui_preferences.print_footer', displayed: pfInput.value, stored: printFooter });
+  const _prefChecks = [
+    ['print_footer', 'printFooterInput'],
+    ['email_prefix', 'emailPrefixInput'],
+    ['email_suffix', 'emailSuffixInput'],
+  ];
+  for (const [key, inputId] of _prefChecks) {
+    const stored = data.ui_preferences?.[key] ?? '';
+    const el = document.getElementById(inputId);
+    if (el && el.value !== stored) {
+      mismatches.push({ field: `ui_preferences.${key}`, displayed: el.value, stored });
+    }
   }
   return { ok: mismatches.length === 0, mismatches };
 }
@@ -495,7 +502,10 @@ async function reallocate(btnEl) {
   const data = getData();
   if (!data) return;
   const btn = btnEl || document.getElementById('btnReallocate');
-  if (btn) { btn.disabled = true; btn.textContent = '⟳ Working…'; }
+  // Update only the label span so a leading SVG icon is preserved (falls back to
+  // textContent for buttons without a .btn-label span, e.g. the lineup button).
+  const _setBtnLabel = (b, text) => { const l = b && b.querySelector('.btn-label'); if (l) l.textContent = text; else if (b) b.textContent = text; };
+  if (btn) { btn.disabled = true; _setBtnLabel(btn, '⟳ Working…'); }
 
   try {
     // Check allocator mode from localStorage (default: 'spa')
@@ -563,7 +573,7 @@ async function reallocate(btnEl) {
   } catch (err) {
     showSnapshotToast('Re-allocate failed: network error', 'err');
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Re-allocate'; }
+    if (btn) { btn.disabled = false; _setBtnLabel(btn, 'Re-allocate'); }
   }
 }
 
@@ -812,11 +822,38 @@ function renderSidebar() {
 
 // ── Dashboard ────────────────────────────────────────────────────────────
 // @front-end { element: dashboard-panel, intent: "surface the next actionable round and season totals on landing", customer: reader, binding: one-way, style: mixed, a11y: wcag-2.1-aa, improve?: "Phase 2 adds focus management + keyboard paths here" }
+// RT-007: collapse SPLIT-shaped matrix columns (A/B) into one `shared` column per
+// job — used so the dashboard renders a FULL_TEAM round as per FULL_TEAM. Mirrors
+// collapseSplitJobs (allocator.js).
+function collapseColumnsForFullTeam(cols) {
+  const out = [];
+  const seen = new Set();
+  for (const col of (cols || [])) {
+    const st = String(col.subteam || '').toLowerCase();
+    if (st === 'a' || st === 'b') {
+      if (seen.has(col.job)) continue;
+      seen.add(col.job);
+      out.push({ ...col, subteam: 'shared', label: col.job });
+    } else {
+      out.push(col);
+    }
+  }
+  return out;
+}
+
 function renderDashboard() {
   const viewModel = selectDashboardViewModel();
   if (!viewModel) return;
-  const { rounds, featureRound: featRound, totalRounds, confirmedRounds, scheduledRounds, columns: cols } = viewModel;
+  const { rounds, featureRound: featRound, totalRounds, confirmedRounds, scheduledRounds, columns: rawCols } = viewModel;
   if (!featRound) return;
+
+  // RT-007: the season-wide matrix columns are SPLIT-shaped (separate A/B columns).
+  // For a FULL_TEAM feature round, collapse them to one shared column per job so the
+  // grid matches that round's collapsed `shared` entries (otherwise A/B tiles show
+  // as "⚠ unfilled" and the real allocation is dropped).
+  const cols = String(featRound.round_type || '').toUpperCase() === 'FULL_TEAM'
+    ? collapseColumnsForFullTeam(rawCols)
+    : rawCols;
 
   // Headline
   const dateObj = featRound.date ? new Date(featRound.date + 'T00:00:00') : null;
@@ -1325,8 +1362,19 @@ function buildManualAllocPanel(r) {
 }
 
 function buildEmailText(r) {
+  // User-configurable prefix/suffix wrap every email (Settings → email prefix/suffix).
+  const _prefs = getData()?.ui_preferences || {};
+  const _prefix = (_prefs.email_prefix || '').trim() ? [_prefs.email_prefix, ''] : [];
+  const _suffix = (_prefs.email_suffix || '').trim() ? ['', _prefs.email_suffix] : [];
+
   if (r.home_away === 'B') {
-    return `Round ${r.round} · ${fmtDate(r.date)} · BYE\n\nNo game this round. No volunteers required.`;
+    return [
+      ..._prefix,
+      `Round ${r.round} · ${fmtDate(r.date)} · BYE`,
+      '',
+      'No game this round. No volunteers required.',
+      ..._suffix,
+    ].join('\n');
   }
 
   // Group by base job name so SPLIT umpire A+B (and BBQ's two slots) collapse into
@@ -1359,13 +1407,14 @@ function buildEmailText(r) {
   });
 
   const preamble = [
+    ..._prefix,
     header,
     dateLine,
     ...(locLine  ? [locLine]  : []),
     '',
     ...(r.extra_notes ? [r.extra_notes, ''] : []),
   ];
-  return [...preamble, ...lines].join('\n');
+  return [...preamble, ...lines, ..._suffix].join('\n');
 }
 
 async function copyRoundText(r) {
@@ -1560,6 +1609,11 @@ function renderSettings() {
 
   const _pfInput = document.getElementById('printFooterInput');
   if (_pfInput && _pfInput.value !== viewModel.printFooter) _pfInput.value = viewModel.printFooter;
+
+  const _epInput = document.getElementById('emailPrefixInput');
+  if (_epInput && _epInput.value !== viewModel.emailPrefix) _epInput.value = viewModel.emailPrefix;
+  const _esInput = document.getElementById('emailSuffixInput');
+  if (_esInput && _esInput.value !== viewModel.emailSuffix) _esInput.value = viewModel.emailSuffix;
 
   const _sdEl = document.getElementById('screenDims');
   if (_sdEl) _sdEl.textContent = `${window.innerWidth} × ${window.innerHeight}px`;
@@ -2013,6 +2067,16 @@ function setupSettings() {
   if (nameInp)   nameInp.addEventListener('input', saveUserTeam);
   if (footerInp) footerInp.addEventListener('input', () => {
     dispatch({ type: 'set-ui-preference', payload: { key: 'print_footer', value: footerInp.value } });
+    render();
+  });
+  const prefixInp = document.getElementById('emailPrefixInput');
+  if (prefixInp) prefixInp.addEventListener('input', () => {
+    dispatch({ type: 'set-ui-preference', payload: { key: 'email_prefix', value: prefixInp.value } });
+    render();
+  });
+  const suffixInp = document.getElementById('emailSuffixInput');
+  if (suffixInp) suffixInp.addEventListener('input', () => {
+    dispatch({ type: 'set-ui-preference', payload: { key: 'email_suffix', value: suffixInp.value } });
     render();
   });
 
@@ -3112,6 +3176,19 @@ async function submitDataForm(type, isEdit, idEncoded, dlg, schema) {
   } else {
     // All other types (including volunteers) write to reference_data via update-reference-data
     dispatch({ type: 'update-reference-data', payload: { key: type, records: _dataRecords[type] } });
+  }
+
+  // When a NEW player is added, also add a matching volunteer (same jumper) so they
+  // can be allocated. There is no other UI to add the volunteer side, so default to
+  // eligible='Y'. Skip if a volunteer with that jumper already exists.
+  if (!isEdit && type === 'players') {
+    const vols = (getData()?.reference_data?.volunteers || []).map(v => ({ ...v }));
+    const jumper = String(body.jumper || '').trim();
+    if (jumper && !vols.some(v => String(v.jumper) === jumper)) {
+      vols.push({ jumper, volunteer_name: body.player_name || '', eligible: 'Y', preferred_job: '', avoid_jobs: '' });
+      _dataRecords['volunteers'] = vols;
+      dispatch({ type: 'update-reference-data', payload: { key: 'volunteers', records: vols } });
+    }
   }
   dlg.close();
   await refreshDataSubpanel(type);
