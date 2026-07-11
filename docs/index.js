@@ -1,4 +1,4 @@
-window.__APP_VERSION = "0.31.65";
+window.__APP_VERSION = "0.31.67";
 'use strict';
 
 // ── Module imports (CLM-004/005/006: single source of truth) ──────────────

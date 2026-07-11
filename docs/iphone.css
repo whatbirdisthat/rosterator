@@ -96,6 +96,16 @@
     gap: 14px;
 }
 
+/* Round-detail: stack the main column above the action buttons on mobile so the
+   manual-allocation panel (shown here because the A4 preview is hidden) spans the
+   full device width. Without this .detail-outer stays a horizontal flex row and the
+   #detailActions button column squashes .detail-main to a narrow strip. Desktop
+   keeps the side-by-side layout. */
+.mobile-layout .detail-outer {
+    flex-direction: column;
+    align-items: stretch;
+}
+
 .mobile-layout .glance-pills {
     gap: 6px;
 }
