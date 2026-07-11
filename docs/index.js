@@ -1,4 +1,4 @@
-window.__APP_VERSION = "0.31.67";
+window.__APP_VERSION = "0.31.70";
 'use strict';
 
 // ── Module imports (CLM-004/005/006: single source of truth) ──────────────
@@ -16,6 +16,7 @@ import {
   normalizeJobNames, serializeJobNames,
 } from './data-records.mjs';
 import { createPersistenceCoordinator } from './persistence-coordinator.mjs';
+import { buildAddPlayerCascade } from './add-player-cascade.mjs';
 
 // ── Allocator global (loaded in index.html as ES module) ──────────────────
 // Read lazily at call time — the ES module may not have executed yet at load.
@@ -2583,7 +2584,8 @@ function openVolSwap(roundNum, job, subteam, slotIndex) {
   // RLK-003: a completed (locked) round is read-only — no volunteer swaps.
   if (isRoundLocked(getRoundByNum(roundNum))) return;
 
-  const eligibleVols = (data.volunteers && data.volunteers.eligible) || [];
+  // Canonical eligible roster (single source of truth) — includes mid-season adds.
+  const eligibleVols = Sel.deriveCanonicalRoster(data).eligible;
   const splits = (data.reference_data && data.reference_data.splits) || [];
   const absences = (data.reference_data && data.reference_data.absences) || [];
 
@@ -3175,16 +3177,26 @@ async function submitDataForm(type, isEdit, idEncoded, dlg, schema) {
     dispatch({ type: 'update-reference-data', payload: { key: type, records: _dataRecords[type] } });
   }
 
-  // When a NEW player is added, also add a matching volunteer (same jumper) so they
-  // can be allocated. There is no other UI to add the volunteer side, so default to
-  // eligible='Y'. Skip if a volunteer with that jumper already exists.
+  // When a NEW player is added mid-season, cascade the dependent reference_data so the
+  // single source of truth stays coherent: a matching volunteer (eligible='Y'), an
+  // absence for every locked/past round (they're OUT), and a balanced A/B split for
+  // every future SPLIT round (FULL_TEAM future rounds need none). Then re-allocate so
+  // they are slotted into the remaining rounds immediately.
   if (!isEdit && type === 'players') {
-    const vols = (getData()?.reference_data?.volunteers || []).map(v => ({ ...v }));
     const jumper = String(body.jumper || '').trim();
-    if (jumper && !vols.some(v => String(v.jumper) === jumper)) {
-      vols.push({ jumper, volunteer_name: body.player_name || '', eligible: 'Y', preferred_job: '', avoid_jobs: '' });
-      _dataRecords['volunteers'] = vols;
-      dispatch({ type: 'update-reference-data', payload: { key: 'volunteers', records: vols } });
+    if (jumper) {
+      const cascade = buildAddPlayerCascade(getData(), { jumper, player_name: body.player_name || '' });
+      _dataRecords['volunteers'] = cascade.volunteers;
+      _dataRecords['splits'] = cascade.splits;
+      _dataRecords['absences'] = cascade.absences;
+      dispatch({ type: 'update-reference-data', payload: { key: 'volunteers', records: cascade.volunteers } });
+      dispatch({ type: 'update-reference-data', payload: { key: 'splits', records: cascade.splits } });
+      dispatch({ type: 'update-reference-data', payload: { key: 'absences', records: cascade.absences } });
+      dlg.close();
+      // reallocate() handles its own errors internally (shows a toast, never rejects).
+      await reallocate();
+      await refreshDataSubpanel(type);
+      return;
     }
   }
   dlg.close();

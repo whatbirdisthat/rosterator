@@ -81,32 +81,92 @@ export function buildSeasonLabel(rounds) {
 // (Was getVolJumper(name), which read the global getData().)
 export function resolveJumperByName(data, name) {
   if (!data) return '';
-  const all = (data.volunteers?.eligible || []).concat(data.volunteers?.ineligible || []);
-  const v = all.find(v => v.volunteer === name);
-  if (v) return v.jumper;
-  const member = (data.user_team?.roster || []).find(m => m.name === name);
-  return member ? String(member.jumper || '') : '';
+  const hit = deriveCanonicalRoster(data).all.find(e => e.volunteer === name);
+  return hit ? String(hit.jumper) : '';
 }
 
 // Resolve a volunteer display name from a jumper number, using the given data model.
 // (Was getVolunteerByJumper(jumper), which read the global getData().)
 export function resolveNameByJumper(data, jumper) {
   if (!data || !jumper) return '';
-  const all = (data.volunteers?.eligible || []).concat(data.volunteers?.ineligible || []);
-  const v = all.find(v => String(v.jumper) === String(jumper));
-  if (v) return v.volunteer || '';
-  const member = (data.user_team?.roster || []).find(m => String(m.jumper) === String(jumper));
-  return member ? (member.name || '') : '';
+  const hit = deriveCanonicalRoster(data).byJumper[String(jumper)];
+  return hit ? (hit.volunteer || '') : '';
+}
+
+// Parse the allocator's semicolon-joined job field into a trimmed string array.
+function splitSemis(raw) {
+  return String(raw || '').split(';').map(s => s.trim()).filter(Boolean);
+}
+
+function rosterShape(all, eligible, ineligible) {
+  return { all, eligible, ineligible, byJumper: Object.fromEntries(all.map(e => [String(e.jumper), e])) };
+}
+
+// SINGLE SOURCE OF TRUTH for "who is on this team and can volunteer".
+// Derived from reference_data.players (jumper → name) + reference_data.volunteers
+// (eligibility + preferred/avoid jobs). This is what every panel + the allocator should
+// agree on, so a player added to reference_data can never be invisible to a screen.
+//
+// Back-compat: when reference_data has NO volunteer rows (legacy / wizard-only data),
+// fall back to the old volunteers.eligible/ineligible + user_team.roster shape so
+// pre-reference_data fixtures keep working. reference_data.volunteers being the switch
+// (not players) matters: some legacy fixtures carry players but hold the authoritative
+// volunteer list in the legacy keys.
+export function deriveCanonicalRoster(data) {
+  const players = data?.reference_data?.players || [];
+  const volunteers = data?.reference_data?.volunteers || [];
+
+  if (volunteers.length === 0) {
+    // Legacy fallback path.
+    const eligible = (data?.volunteers?.eligible || []).map(v => ({ ...v, eligible: true }));
+    const ineligible = (data?.volunteers?.ineligible || []).map(v => ({ ...v, eligible: false }));
+    if (eligible.length === 0 && ineligible.length === 0) {
+      const roster = (data?.user_team?.roster || []).filter(m => m.jumper).map(m => ({
+        jumper: String(m.jumper), volunteer: m.name || String(m.jumper),
+        player_name: m.name || String(m.jumper), eligible: true,
+        preferred_jobs: [], avoid_jobs: [], certifications: [],
+      }));
+      return rosterShape(roster, roster, []);
+    }
+    return rosterShape(eligible.concat(ineligible), eligible, ineligible);
+  }
+
+  const nameByJumper = {};
+  for (const p of players) nameByJumper[String(p.jumper)] = p.player_name;
+  const volByJumper = {};
+  for (const v of volunteers) volByJumper[String(v.jumper)] = v;
+
+  const jumpers = [...new Set([
+    ...players.map(p => String(p.jumper)),
+    ...volunteers.map(v => String(v.jumper)),
+  ])];
+
+  const all = jumpers.map(jumper => {
+    const v = volByJumper[jumper];
+    const name = nameByJumper[jumper] || (v && v.volunteer_name) || jumper;
+    return {
+      jumper,
+      volunteer: name,
+      player_name: name,
+      eligible: v ? String(v.eligible ?? '').trim().toLowerCase() === 'y' : true,
+      preferred_jobs: v ? splitSemis(v.preferred_job) : [],
+      avoid_jobs: v ? splitSemis(v.avoid_jobs) : [],
+      certifications: v && Array.isArray(v.certifications) ? v.certifications : [],
+    };
+  }).sort((a, b) => Number(a.jumper) - Number(b.jumper));
+
+  return rosterShape(all, all.filter(e => e.eligible), all.filter(e => !e.eligible));
+}
+
+export function selectCanonicalRoster(state) {
+  return deriveCanonicalRoster(selectStoreData(state));
 }
 
 export function computeClientBalance(data) {
-  // Build volunteer list: prefer user_team.roster, fall back to volunteers.eligible.
-  const rosterMembers = (data?.user_team?.roster || []).filter(m => m.jumper);
-  const eligibleVols  = (data?.volunteers?.eligible || []).filter(v => v.jumper);
-
-  const volList = rosterMembers.length > 0
-    ? rosterMembers.map(m => ({ jumper: String(m.jumper), name: m.name || String(m.jumper) }))
-    : eligibleVols.map(v => ({ jumper: String(v.jumper), name: v.volunteer || String(v.jumper) }));
+  // The volunteer list is the canonical eligible roster (single source of truth).
+  const volList = deriveCanonicalRoster(data).eligible
+    .filter(v => v.jumper)
+    .map(v => ({ jumper: String(v.jumper), name: v.volunteer || String(v.jumper) }));
 
   if (volList.length === 0) return null;
 
@@ -231,8 +291,9 @@ export function selectSettingsViewModel(state) {
   const data = selectStoreData(state);
   if (!data) return null;
   const ov = data.season_overview || {};
-  const eligibleCount = data.volunteers?.eligible?.length || 0;
-  const ineligibleCount = data.volunteers?.ineligible?.length || 0;
+  const roster = deriveCanonicalRoster(data);
+  const eligibleCount = roster.eligible.length;
+  const ineligibleCount = roster.ineligible.length;
   return {
     cards: [
       { label: 'Players',       value: ov.players },
@@ -258,9 +319,10 @@ export function selectSidebarViewModel(state) {
   const data = selectStoreData(state);
   if (!data) return null;
   const rounds = selectRounds(state);
-  const eligible = data.volunteers?.eligible || [];
-  const ineligible = data.volunteers?.ineligible || [];
-  const total = eligible.length + ineligible.length;
+  // Eligible/total counts come from the canonical roster (single source of truth).
+  const canon = deriveCanonicalRoster(data);
+  const eligible = canon.eligible;
+  const total = canon.all.length;
   const roster = data.user_team?.roster || [];
   const teamName = data.user_team?.team_name || 'Volunteer Roster';
   const playerCount = roster.length;
@@ -333,27 +395,11 @@ export function selectAlertsViewModel(state) {
 export function selectVolunteersViewModel(filter = '', state) {
   const data = selectStoreData(state);
   if (!data) return null;
-  let eligible = data.volunteers?.eligible || [];
-  const ineligible = data.volunteers?.ineligible || [];
-
-  // Fallback: derive minimal volunteer list from user_team.roster.
-  if (eligible.length === 0) {
-    const roster = data.user_team?.roster || [];
-    if (roster.length > 0) {
-      eligible = roster.map(m => ({
-        jumper: String(m.jumper),
-        volunteer: m.name || String(m.jumper),
-        player_name: m.name || String(m.jumper),
-        certifications: [],
-        preferred_jobs: [],
-        avoid_jobs: [],
-        total_assignments: 0,
-        confirmed_assignments: 0,
-        scheduled_assignments: 0,
-        assignments: [],
-      }));
-    }
-  }
+  // Single source of truth: eligible/ineligible come from the canonical roster
+  // (reference_data), so a mid-season player is never missing here.
+  const roster = deriveCanonicalRoster(data);
+  const eligible = roster.eligible;
+  const ineligible = roster.ineligible;
 
   const lower = String(filter || '').toLowerCase();
   const absences = data.reference_data?.absences || [];
