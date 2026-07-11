@@ -56,7 +56,7 @@ export function isAvailable() {
  *
  * @returns {Promise<Object|null>} the snapshot data or null if not found
  */
-export async function loadSnapshot() {
+export async function loadSnapshot(key = KEY_NAME) {
   return new Promise((resolve) => {
     try {
       const req = window.indexedDB.open(DB_NAME, 1);
@@ -71,7 +71,7 @@ export async function loadSnapshot() {
         try {
           const tx = db.transaction(STORE_NAME, 'readonly');
           const store = tx.objectStore(STORE_NAME);
-          const getReq = store.get(KEY_NAME);
+          const getReq = store.get(key);
 
           getReq.onerror = () => {
             console.warn('[idb] loadSnapshot: get failed', getReq.error);
@@ -115,7 +115,7 @@ export async function loadSnapshot() {
  * @param {Object} data - the snapshot to persist
  * @returns {Promise<void>}
  */
-export async function saveSnapshot(data) {
+export async function saveSnapshot(data, key = KEY_NAME) {
   return new Promise((resolve, reject) => {
     try {
       const req = window.indexedDB.open(DB_NAME, 1);
@@ -130,7 +130,7 @@ export async function saveSnapshot(data) {
         try {
           const tx = db.transaction(STORE_NAME, 'readwrite');
           const store = tx.objectStore(STORE_NAME);
-          const putReq = store.put(data, KEY_NAME);
+          const putReq = store.put(data, key);
 
           putReq.onerror = () => {
             console.warn('[idb] saveSnapshot: put failed', putReq.error);
@@ -172,7 +172,7 @@ export async function saveSnapshot(data) {
  *
  * @returns {Promise<void>}
  */
-export async function clearSnapshot() {
+export async function clearSnapshot(key = KEY_NAME) {
   return new Promise((resolve) => {
     try {
       const req = window.indexedDB.open(DB_NAME, 1);
@@ -187,7 +187,7 @@ export async function clearSnapshot() {
         try {
           const tx = db.transaction(STORE_NAME, 'readwrite');
           const store = tx.objectStore(STORE_NAME);
-          const delReq = store.delete(KEY_NAME);
+          const delReq = store.delete(key);
 
           delReq.onerror = () => {
             console.warn('[idb] clearSnapshot: delete failed', delReq.error);

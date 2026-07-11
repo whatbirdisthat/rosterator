@@ -2826,3 +2826,37 @@ body[data-density="spacious"] .round-card { padding-top: 14px; padding-bottom: 1
   border: 1px solid var(--border2); border-radius: var(--radius);
   font-family: var(--font-body); font-size: 14px;
 }
+
+/* ── Beam (P2P TM_DATA "send to my phone") ─────────────────────────────────── */
+.beam-beta {
+  font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--bg); background: var(--accent); border-radius: 999px; padding: 1px 6px; vertical-align: middle;
+}
+.beam-overlay {
+  position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.55); padding: 20px;
+}
+.beam-card {
+  position: relative; width: 100%; max-width: 380px; background: var(--bg2);
+  border: 1px solid var(--border); border-radius: var(--radius-lg, 10px); box-shadow: var(--shadow);
+  padding: 22px; text-align: center; color: var(--text); font-family: var(--font-body);
+}
+.beam-card h3 { font-family: var(--font-head); margin: 0 0 12px; font-size: 16px; }
+.beam-card p { font-size: 13px; color: var(--text2); line-height: 1.5; margin: 8px 0; }
+.beam-close {
+  position: absolute; top: 8px; right: 10px; background: none; border: 0; color: var(--muted);
+  font-size: 22px; line-height: 1; cursor: pointer;
+}
+.beam-qr {
+  width: 260px; height: 260px; max-width: 78vw; image-rendering: pixelated;
+  border: 8px solid #fff; border-radius: 8px; margin: 6px auto; display: block;
+}
+.beam-sas {
+  font-family: var(--font-head); font-size: 40px; font-weight: 800; letter-spacing: .18em;
+  color: var(--accent); margin: 12px 0; padding-left: .18em;
+}
+.beam-status { min-height: 1.2em; color: var(--muted); }
+.beam-done { color: var(--confirmed, #4fc17a); font-weight: 700; font-size: 15px; }
+.beam-err  { color: var(--error, #ff5c5c); }
+.beam-warn { color: var(--warn, #f5c842); font-weight: 600; }
+.beam-card .btn { margin-top: 8px; }

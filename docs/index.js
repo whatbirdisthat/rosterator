@@ -1,4 +1,4 @@
-window.__APP_VERSION = "0.31.78";
+window.__APP_VERSION = "0.31.81";
 'use strict';
 
 // ── Module imports (CLM-004/005/006: single source of truth) ──────────────
@@ -17,6 +17,8 @@ import {
 } from './data-records.mjs';
 import { createPersistenceCoordinator } from './persistence-coordinator.mjs';
 import { buildAddPlayerCascade } from './add-player-cascade.mjs';
+import { buildTmSnapshot, validateTmSnapshot, applyTmSnapshot, tmDataFilename } from './tm-data.mjs';
+import { initBeamUI } from './beam-ui.mjs';
 
 // ── Allocator global (loaded in index.html as ES module) ──────────────────
 // Read lazily at call time — the ES module may not have executed yet at load.
@@ -411,6 +413,17 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupDataPanel();
   restoreSkin();
   restoreMobileNavHintState();
+
+  // Beam (P2P TM_DATA): Settings "Send to my phone" + scanned-QR receiver.
+  initBeamUI({
+    getData, persist, whenPersisted, dispatch, render, backupCurrentForUndo,
+    undoBeamImport: async () => {
+      const undo = await window.__idb?.loadSnapshot('beam-undo');
+      if (!undo) return;
+      await applyTmSnapshot(undo, { persist, whenPersisted, dispatch });
+      render();
+    },
+  });
 
   // OFF-008: Initialize offline mode (check IDB availability)
   await initOfflineMode();
@@ -2098,46 +2111,37 @@ function setupSettings() {
 }
 
 function exportTmData() {
-  const data = getData();
-  if (!data) return;
+  const snapshot = buildTmSnapshot(getData());
+  if (!snapshot) return;
+  const filename = tmDataFilename(snapshot);
+  const json = JSON.stringify(snapshot, null, 2);
+  const file = new File([json], filename, { type: 'application/json' });
 
-  // Build roster for USER_SPA name resolution (OWDB: one source of truth).
-  // Prefer existing roster; construct from volunteers.eligible when absent.
-  const existingRoster = data.user_team?.roster || [];
-  const roster = existingRoster.length > 0
-    ? existingRoster
-    : (data.volunteers?.eligible || []).map(v => ({
-        jumper: String(v.jumper),
-        name: v.volunteer || '',
-      }));
+  // Mobile: hand the file straight to the OS share sheet (AirDrop / Nearby Share).
+  // Desktop / unsupported: fall back to a download.
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    navigator.share({ files: [file], title: 'FootyManager TM data' })
+      .catch(() => downloadFile(file));
+  } else {
+    downloadFile(file);
+  }
+  markTmDataDownloaded();
+}
 
-  const snapshot = {
-    user_team: { ...(data.user_team || {}), roster },
-    round_summary: data.round_summary || { rounds: [] },
-    reference_data: data.reference_data || {},
-    volunteers:     data.volunteers    || { eligible: [], ineligible: [] },
-    balance:        data.balance       || null,
-    constraints:    data.constraints   || {},
-    matrix:         data.matrix        || null,
-    season_overview: data.season_overview || {},
-    _exported_at: new Date().toISOString(),
-    _schema_version: 1,
-  };
-  const teamSlug = (data.user_team?.team_name || 'team')
-    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  const dateStr = new Date().toISOString().slice(0, 10);
-  const filename = `tm-data-${teamSlug}-${dateStr}.json`;
-  const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
+// Trigger a browser download of a File/Blob.
+function downloadFile(file) {
+  const url = URL.createObjectURL(file);
   const a = document.createElement('a');
   a.href = url;
-  a.download = filename;
+  a.download = file.name || 'tm-data.json';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
 
-  // SPA-DNG-002: mark that a backup has been downloaded
+// SPA-DNG-002: mark that a backup has left the device (unlocks the danger-zone delete).
+function markTmDataDownloaded() {
   try {
     localStorage.setItem('footy-manager-has-downloaded', '1');
     const _db = document.getElementById('btnDeleteData');
@@ -2164,6 +2168,15 @@ async function handleConfirmDeleteData() {
   location.reload();
 }
 
+// Back up the current snapshot to the 'beam-undo' IDB key so an import (file or Beam)
+// can be reverted if it overwrote something the user wanted to keep.
+async function backupCurrentForUndo() {
+  try {
+    const cur = getData();
+    if (cur && window.__idb?.saveSnapshot) await window.__idb.saveSnapshot(cur, 'beam-undo');
+  } catch (_) { /* best effort */ }
+}
+
 function handleTmDataImport() {
   const input = document.getElementById('importTmDataFile');
   const errEl = document.getElementById('importTmDataError');
@@ -2172,32 +2185,20 @@ function handleTmDataImport() {
 
   const reader = new FileReader();
   reader.onload = async (e) => {
-    let parsed;
     try {
+      let parsed;
       try {
         parsed = JSON.parse(e.target.result);
       } catch (_) {
         throw new Error('Could not parse file — make sure it is a valid tm-data JSON export');
       }
-      if (!parsed.user_team) {
-        throw new Error('Invalid file — missing required key: user_team');
-      }
-      if (!parsed.round_summary)  parsed.round_summary  = { rounds: [] };
-      if (!parsed.reference_data) parsed.reference_data = {};
-
-      // Ensure user_team.roster is populated for USER_SPA name resolution.
-      // Old exports or admin exports may have volunteers but no roster.
-      if (!parsed.user_team.roster || parsed.user_team.roster.length === 0) {
-        parsed.user_team.roster = (parsed.volunteers?.eligible || []).map(v => ({
-          jumper: String(v.jumper),
-          name: v.volunteer || '',
-        }));
-      }
+      const { ok, error, normalized } = validateTmSnapshot(parsed);
+      if (!ok) throw new Error(error);
 
       if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
 
-      persist(parsed); await whenPersisted();   // durable before continuing (OFF-005a/d)
-      dispatch({ type: 'load-report', payload: { filename: 'from-import', report: parsed } });
+      // Durable before continuing (OFF-005a/d), with a best-effort undo backup.
+      await applyTmSnapshot(normalized, { persist, whenPersisted, dispatch, backup: backupCurrentForUndo });
       render();
     } catch (err) {
       if (errEl) { errEl.textContent = err.message; errEl.style.display = ''; }
