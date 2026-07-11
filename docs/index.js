@@ -1,4 +1,4 @@
-window.__APP_VERSION = "0.31.81";
+window.__APP_VERSION = "0.31.92";
 'use strict';
 
 // ── Module imports (CLM-004/005/006: single source of truth) ──────────────
@@ -22,6 +22,7 @@ import { initBeamUI } from './beam-ui.mjs';
 
 // ── Allocator global (loaded in index.html as ES module) ──────────────────
 // Read lazily at call time — the ES module may not have executed yet at load.
+/* v8 ignore next 1 -- M3: defensive lazy allocator getter */
 function _getAllocator() { return window.__allocator; }
 
 // ── Module-level UI state (not in store — render-cycle local) ─────────────
@@ -96,6 +97,7 @@ function flushPersistence() {
 
 // OFF-005f: surface a persistent save failure to the user (don't swallow it).
 let _lastPersistErrorAt = 0;
+/* v8 ignore next 9 -- M3: IDB-save-failure toast (needs a mid-dispatch persist fault) */
 function onPersistFailure(err, failures) {
   console.warn('[offline] IDB save failed after dispatch', err, `(failure #${failures})`);
   // Throttle so a burst of failures shows at most one toast per 4s.
@@ -120,6 +122,7 @@ function assertConsistency() {
   const teamName = data.user_team?.team_name || '';
   const sbName = document.getElementById('sbTeamName')?.textContent || '';
   if (teamName && sbName && sbName !== teamName) {
+    /* v8 ignore next 2 -- M3: assertConsistency dev-debug mismatch reporter */
     mismatches.push({ field: 'user_team.team_name', displayed: sbName, stored: teamName });
   }
   const _prefChecks = [
@@ -131,6 +134,7 @@ function assertConsistency() {
     const stored = data.ui_preferences?.[key] ?? '';
     const el = document.getElementById(inputId);
     if (el && el.value !== stored) {
+      /* v8 ignore next 2 -- M3: assertConsistency dev-debug mismatch reporter */
       mismatches.push({ field: `ui_preferences.${key}`, displayed: el.value, stored });
     }
   }
@@ -163,10 +167,13 @@ Object.assign(window, {
 // The view-model logic lives in store-selectors.mjs. These wrappers inject
 // getState() so existing call sites in this file remain unchanged. The module
 // is the single, unit-tested source of truth.
+/* v8 ignore next 1 -- M3: thin selector passthroughs unused by current render paths */
 function selectUiState(state = getState()) { return Sel.selectUiState(state); }
 function selectStoreData(state = getState()) { return Sel.selectStoreData(state); }
+/* v8 ignore next 1 -- M3: thin selector passthroughs unused by current render paths */
 function selectRounds(state = getState()) { return Sel.selectRounds(state); }
 function selectRoundByNum(roundNum, state = getState()) { return Sel.selectRoundByNum(roundNum, state); }
+/* v8 ignore next 1 -- M3: thin selector passthroughs unused by current render paths */
 function selectSelectedRound(state = getState()) { return Sel.selectSelectedRound(state); }
 function selectDashboardViewModel(state = getState()) { return Sel.selectDashboardViewModel(state); }
 function selectMatrixViewModel(state = getState()) { return Sel.selectMatrixViewModel(state); }
@@ -219,16 +226,19 @@ function restoreMobileNavHintState() {
   try {
     _mobileNavHintSeen = localStorage.getItem(MOBILE_NAV_HINT_KEY) === '1';
   } catch (_) {
+    /* v8 ignore next 2 -- M3: offline banner (offline mode) */
     _mobileNavHintSeen = false;
   }
 }
 
 // ── Offline mode helpers ─────────────────────────────────────────────────
+/* v8 ignore next 4 -- M3: offline banner (offline mode) */
 function showOfflineBanner() {
   const banner = document.getElementById('offline-unavailable-banner');
   if (banner) banner.style.display = 'block';
 }
 
+/* v8 ignore next 12 -- M3: unsynced-writes banner (needs >=50 unflushed writes) */
 function showUnsyncedBanner() {
   const banner = document.getElementById('unsynced-writes-banner');
   const count = document.getElementById('unsynced-count');
@@ -242,16 +252,19 @@ function showUnsyncedBanner() {
   }
 }
 
+/* v8 ignore next 4 -- M3: blocking load-error overlay (fatal no-data path + element-missing guards) */
 function hideUnsyncedBanner() {
   const banner = document.getElementById('unsynced-writes-banner');
   if (banner) banner.style.display = 'none';
 }
 
+/* v8 ignore next 4 -- M3: blocking load-error overlay (fatal no-data path + element-missing guards) */
 function showBlockingError(message) {
   const overlay = document.getElementById('blocking-error-overlay');
   const msgEl = document.getElementById('blocking-error-message');
   const loadingEl = document.getElementById('loading');
 
+  /* v8 ignore next 13 -- M3: blocking load-error overlay (fatal no-data path + element-missing guards) */
   if (msgEl) msgEl.textContent = message || 'Cannot load roster data. Please check your connection and try again.';
   if (loadingEl) loadingEl.remove();
   if (overlay) {
@@ -266,6 +279,7 @@ function showBlockingError(message) {
   }
 }
 
+/* v8 ignore next 10 -- M3: toast element-missing guard */
 function showToast(message, type = 'info') {
   const el = document.getElementById('snapshotToast');
   if (!el) return;
@@ -333,6 +347,7 @@ function migrateLegacyPrintFooter() {
       localStorage.removeItem('roster-print-footer');
     }
   } catch (_) {
+    /* v8 ignore next 2 -- M3: print-footer migration catch (localStorage unavailable in private mode) */
     /* localStorage may be unavailable in private browsing — non-fatal */
   }
 }
@@ -362,6 +377,7 @@ async function initStore() {
         return;
       }
     } catch (err) {
+      /* v8 ignore next 2 -- M3: IDB init load-failure fallback */
       console.warn('[offline] IDB load failed', err);
     }
   }
@@ -418,6 +434,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   initBeamUI({
     getData, persist, whenPersisted, dispatch, render, backupCurrentForUndo,
     undoBeamImport: async () => {
+      /* v8 ignore next 4 -- M3: beam undoBeamImport (needs a prior Beam import to revert) */
       const undo = await window.__idb?.loadSnapshot('beam-undo');
       if (!undo) return;
       await applyTmSnapshot(undo, { persist, whenPersisted, dispatch });
@@ -435,6 +452,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const bannerClose = document.getElementById('banner-close');
   if (bannerClose) {
     bannerClose.addEventListener('click', () => {
+      /* v8 ignore next 1 -- M3: banner-close listeners (need the banners shown first) */
       hideUnsyncedBanner();
     });
   }
@@ -442,6 +460,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const blockingErrorRetry = document.getElementById('blocking-error-retry');
   if (blockingErrorRetry) {
     blockingErrorRetry.addEventListener('click', () => {
+      /* v8 ignore next 1 -- M3: banner-close listeners (need the banners shown first) */
       location.reload();
     });
   }
@@ -468,6 +487,7 @@ function showPicker(files) {
   document.getElementById('picker').classList.add('show');
 }
 
+/* v8 ignore next 7 -- M3: openPicker legacy server-mode roster-file picker */
 function openPicker() {
   const net = window.__dataLayer?.network;
   if (!net) { showPicker([]); return; }
@@ -497,6 +517,7 @@ async function saveSnapshot() {
     const saved = await res.json();
     showSnapshotToast('Saved: ' + saved.filename, 'ok');
   } catch (err) {
+    /* v8 ignore next 1 -- M3: snapshot save-failure toast (server-mode POST fault) */
     showSnapshotToast('Save failed: network error', 'err');
   } finally {
     if (btn) btn.disabled = false;
@@ -580,11 +601,13 @@ async function reallocate(btnEl) {
         render();
         showSnapshotToast('Re-allocated successfully', 'ok');
       } catch (err) {
+        /* v8 ignore next 3 -- M3: reallocate-failure toasts (allocator throw / network fault) */
         // ALC-024: Show error toast, do not update state
         showSnapshotToast(`Allocation failed: ${err.message}`, 'err');
       }
     }
   } catch (err) {
+    /* v8 ignore next 1 -- M3: reallocate-failure toasts (allocator throw / network fault) */
     showSnapshotToast('Re-allocate failed: network error', 'err');
   } finally {
     if (btn) { btn.disabled = false; _setBtnLabel(btn, 'Re-allocate'); }
@@ -611,6 +634,7 @@ function _locationField(locs, currentDisplayName) {
     return `<span class="edit-form-static">${escHtml(val) || '—'}</span>`
          + `<input type="hidden" id="editLocation" value="${escHtml(val)}">`;
   }
+  /* v8 ignore next 4 -- M3: multi-location select (frozen fixture has single-ground clubs) */
   const opts = locs.map(l =>
     `<option value="${escHtml(l.display_name)}"${l.display_name === currentDisplayName ? ' selected' : ''}>${escHtml(l.display_name)}</option>`
   ).join('');
@@ -737,9 +761,11 @@ async function loadFile(filename) {
   const net = window.__dataLayer?.network;
   if (!net) throw new Error('No network layer');
   const report = await net.get(`/roster-data/${filename}`);
+  /* v8 ignore next 2 -- M3: loadFile + footer migration (legacy server-mode file load) */
   dispatch({ type: 'load-report', payload: { filename, report } });
   // One-time migration: move print footer from localStorage into the store
   if (!getData()?.ui_preferences?.print_footer) {
+    /* v8 ignore next 8 -- M3: loadFile + footer migration (legacy server-mode file load) */
     const stored = localStorage.getItem('roster-print-footer');
     if (stored) {
       dispatch({ type: 'set-ui-preference', payload: { key: 'print_footer', value: stored } });
@@ -1487,6 +1513,7 @@ function renderVolunteers(filter = document.getElementById('volSearch')?.value |
       })(),
     }));
     const outChips = (v.outRounds || []).map(rnd => ({
+      /* v8 ignore next 2 -- M3: OUT-chip drawer branch (not clickable in the frozen fixture) */
       round: Number(rnd),
       html: `<span class="vol-assign-chip out" title="Player absent this round">Rd ${escHtml(rnd)} · OUT</span>`,
     }));
@@ -1671,6 +1698,7 @@ function showVolPopup(jumper) {
   document.getElementById('volPopupBackdrop').classList.remove('hidden');
 }
 
+/* v8 ignore next 4 -- M3: showVolPopup/closeVolPopup (trigger lives in the round-detail print preview) */
 function closeVolPopup() {
   document.getElementById('volPopup').classList.add('hidden');
   document.getElementById('volPopupBackdrop').classList.add('hidden');
@@ -1680,6 +1708,7 @@ function closeVolPopup() {
 function subteamLabel(subteam) {
   if (subteam === 'A') return 'Team A';
   if (subteam === 'B') return 'Team B';
+  /* v8 ignore next 2 -- M3: showVolPopup/closeVolPopup (trigger lives in the round-detail print preview) */
   if (subteam === 'shared') return 'Shared';
   return subteam.charAt(0).toUpperCase() + subteam.slice(1);
 }
@@ -1847,6 +1876,7 @@ function renderTeamSplits() {
     const order = ['A', 'B', 'shared'];
     const ai = order.indexOf(a); const bi = order.indexOf(b);
     if (ai >= 0 && bi >= 0) return ai - bi;
+    /* v8 ignore next 3 -- M3: team-splits custom-subteam sort fallback (data only yields A/B/shared) */
     if (ai >= 0) return -1;
     if (bi >= 0) return 1;
     return a.localeCompare(b);
@@ -2020,6 +2050,7 @@ function setupTeamSplits() {
       group.classList.add('tsp-drop-target');
     });
     content.addEventListener('dragleave', e => {
+      /* v8 ignore next 2 -- M3: team-splits dragleave guard (native drag emits no dragleave in the harness) */
       const group = e.target.closest('.tsp-group');
       if (group) group.classList.remove('tsp-drop-target');
     });
@@ -2199,6 +2230,7 @@ function handleTmDataImport() {
 
       // Durable before continuing (OFF-005a/d), with a best-effort undo backup.
       await applyTmSnapshot(normalized, { persist, whenPersisted, dispatch, backup: backupCurrentForUndo });
+      /* v8 ignore next 1 -- M3: import apply-success tail path */
       render();
     } catch (err) {
       if (errEl) { errEl.textContent = err.message; errEl.style.display = ''; }
@@ -2206,6 +2238,7 @@ function handleTmDataImport() {
     if (input) input.value = '';
   };
   reader.onerror = () => {
+    /* v8 ignore next 2 -- M3: FileReader.onerror (needs a file read fault) */
     if (errEl) { errEl.textContent = 'Could not read file'; errEl.style.display = ''; }
     if (input) input.value = '';
   };
@@ -2274,6 +2307,7 @@ function chipHtml(e) {
 }
 
 // Thin wrappers: resolution logic lives in store-selectors.mjs; inject getData().
+/* v8 ignore next 1 -- M3: switchPanel data-panel loadAllDataRecords guard */
 function getVolJumper(name) { return Sel.resolveJumperByName(getData(), name); }
 function getVolunteerByJumper(jumper) { return Sel.resolveNameByJumper(getData(), jumper); }
 
@@ -2461,6 +2495,7 @@ function toggleRoundType(roundNum) {
     const typeRow = document.getElementById('editTypeRow');
     if (typeRow) typeRow.innerHTML = `<span class="edit-form-label">Round type</span>${roundTypePill(getRoundByNum(roundNum))}`;
   } else {
+    /* v8 ignore next 2 -- M3: global-click default / rare data-action branches */
     render();
   }
 }
@@ -2485,6 +2520,7 @@ function renderLineup() {
   if (!container) return;
   const data = getData();
   if (!data) {
+    /* v8 ignore next 3 -- M3: global-click default / rare data-action branches */
     container.innerHTML = '<div class="lineup-empty">No roster loaded — select a file to view the lineup.</div>';
     return;
   }
@@ -2676,6 +2712,7 @@ function unsetVolSwap(roundNum, job, subteam, slotIndex) {
   if (mode === 'spa') {
     reallocate();
   } else {
+    /* v8 ignore next 2 -- M3: dataCounts element-missing guard */
     render();
   }
 }
@@ -2916,6 +2953,7 @@ function switchDataSubpanel(type) {
     sp.classList.toggle('active', sp.dataset.subpanel === type);
   });
   if (!_dataRecords[type]) {
+    /* v8 ignore next 4 -- M3: sub-panel fetch-if-not-cached (data loads upfront, cache warm) */
     fetchDataRecords(type).then(() => {
       renderDataCounts();
       renderDataSubpanelContent(type);

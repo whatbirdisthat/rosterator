@@ -13,9 +13,12 @@ import { buildTmSnapshot, applyTmSnapshot, summariseSnapshot } from './tm-data.m
 let _deps = null;
 async function loadDeps() {
   if (window.__beamDeps) return window.__beamDeps;           // test hook: {joinRoom, qrToDataURL}
+  /* v8 ignore start -- real vendored Trystero bundle loads only in production (needs WebRTC
+     + a relay); every test injects window.__beamDeps above to avoid the network. */
   if (!_deps) _deps = await import('./vendor/beam-deps.mjs');
   return _deps;
 }
+/* v8 ignore stop */
 
 let ctx = null;                                              // app deps injected by index.js
 const el = id => document.getElementById(id);

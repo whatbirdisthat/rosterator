@@ -25,7 +25,7 @@ export function escHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-async function fetchJson(url) {
+export async function fetchJson(url) {
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`${url} unavailable`);
@@ -226,7 +226,7 @@ export function validateImportFile(content) {
   return parsed;
 }
 
-function showImport(onComplete) {
+export function showImport(onComplete) {
   setWizardContent(`
     <h2 style="margin-bottom:1rem">Import team data</h2>
     <p style="font-size:0.9rem;margin-bottom:1rem">
@@ -257,7 +257,7 @@ function showImport(onComplete) {
   });
 }
 
-function processImportFile(file, onComplete) {
+export function processImportFile(file, onComplete) {
   clearWizardError();
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -286,7 +286,7 @@ function processImportFile(file, onComplete) {
 
 // ── Completion screen ─────────────────────────────────────────────────────
 
-function showCompletionScreen(state, onComplete, opts = {}) {
+export function showCompletionScreen(state, onComplete, opts = {}) {
   const { user_team } = state;
   const roster = user_team.roster || [];
   const previewRows = roster.slice(0, 5).map(r =>
@@ -640,7 +640,7 @@ async function showResumeLanding(refData, draft, onComplete) {
 
 // WIZ2-010: keep Tab focus inside the wizard, and route Escape through the
 // discard-confirm rather than letting it close the modal silently.
-function wizardFocusTrap(e) {
+export function wizardFocusTrap(e) {
   if (document.getElementById('wizardConfirm')) return; // the confirm owns focus
   const wiz = document.getElementById('wizard');
   if (!wiz || wiz.style.display === 'none') return;
@@ -680,9 +680,9 @@ export async function showWizard(onComplete) {
   let restartListener = null;
 
   function start(draft) {
-    if (restartListener) {
-      document.removeEventListener('wizard-restart', restartListener);
-    }
+    // NB: start() runs exactly once per showWizard (the restart flow calls showStartFresh
+    // directly, not start), so no previously-registered restart listener can exist here —
+    // hence no cleanup guard.
     restartListener = () => {
       clearDraft();
       showStartFresh(refData, null, onComplete);

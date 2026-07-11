@@ -335,7 +335,7 @@ function objectiveCached(postRoundLoad, pendingRounds, cache) {
 // Search Context Building
 // ────────────────────────────────────────────────────────────────────────────
 
-function buildRoundSearchContext(
+export function buildRoundSearchContext(
   roundId,
   isHomeRound,
   slots,
@@ -491,7 +491,7 @@ function searchBestAssignment(ctx, maxStates, cache) {
   return [bestNames, bestScore, stack.length > 0, exploredStates];
 }
 
-function searchRoundAssignment(ctx, maxStates = SEARCH_STATE_BUDGET) {
+export function searchRoundAssignment(ctx, maxStates = SEARCH_STATE_BUDGET) {
   const nSlots = ctx.slots.length;
   if (nSlots === 0) {
     return { assignments: [], errors: [], objective_score: 0, explored_states: 0, exhausted: false };
