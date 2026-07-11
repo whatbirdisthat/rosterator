@@ -1,4 +1,4 @@
-window.__APP_VERSION = "0.31.76";
+window.__APP_VERSION = "0.31.78";
 'use strict';
 
 // ── Module imports (CLM-004/005/006: single source of truth) ──────────────
@@ -2594,15 +2594,14 @@ function openVolSwap(roundNum, job, subteam, slotIndex) {
 
   const candidates = eligibleVols.filter(v => {
     if ((v.avoid_jobs || []).includes(job)) return false;
+    // An OUT player cannot be assigned ANY job that round — shared jobs included
+    // (previously this exclusion only applied to subteam-specific slots).
+    if (absences.some(a => String(a.round) === String(roundNum) && String(a.jumper) === String(v.jumper))) {
+      return false;
+    }
     if (subteam && subteam !== 'shared') {
       const volSubteam = splitMap[`${roundNum}|${v.jumper}`];
       if (volSubteam !== subteam) return false;
-    }
-    // Exclude absent players from subteam-specific slots
-    if (subteam && subteam !== 'shared') {
-      if (absences.some(a => String(a.round) === String(roundNum) && String(a.jumper) === String(v.jumper))) {
-        return false;
-      }
     }
     return true;
   });

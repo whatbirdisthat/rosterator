@@ -699,6 +699,7 @@ export function buildAssignmentContext(players, volunteers, splits, absences = [
   return {
     player_subteam: playerSubteam,
     volunteer_subteam_by_round: volunteerSubteamByRound,
+    absent_set: absentSet,
     eligible_volunteers: eligibleVolunteers,
     preferred_jobs_by_volunteer: preferredJobsByVolunteer,
     avoid_jobs_by_volunteer: avoidJobsByVolunteer,
@@ -763,6 +764,12 @@ export function rebalanceFutureRounds(data, options = {}) {
 
   const ctx = buildAssignmentContext(players, volunteers, splits, absences);
 
+  // An OUT player cannot be assigned ANY job that round — filter them from the
+  // candidate pool per round (shared AND subteam slots). Absence only gated A/B
+  // slots before (via a missing subteam mapping), leaving shared jobs open.
+  const eligibleForRound = (rid) =>
+    ctx.eligible_volunteers.filter(v => !ctx.absent_set.has(`${rid}|${v.jumper}`));
+
   const existingRounds = roundSummary.rounds || [];
   const existingRoundMap = {};
   for (const roundEntry of existingRounds) {
@@ -822,7 +829,7 @@ export function rebalanceFutureRounds(data, options = {}) {
             futureDef.round_id,
             futureIsHome,
             futureSlots,
-            ctx.eligible_volunteers,
+            eligibleForRound(futureDef.round_id),
             ctx.volunteer_subteam_by_round,
             ctx.avoid_jobs_by_volunteer,
             bbqAssignedThisSeason,
@@ -852,7 +859,7 @@ export function rebalanceFutureRounds(data, options = {}) {
       roundId,
       isHome,
       slots,
-      ctx.eligible_volunteers,
+      eligibleForRound(roundId),
       ctx.volunteer_subteam_by_round,
       ctx.preferred_jobs_by_volunteer,
       ctx.avoid_jobs_by_volunteer,
