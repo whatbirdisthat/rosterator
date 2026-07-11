@@ -55,6 +55,64 @@
   --completed: var(--tag-b);
 }
 
+/* Regal — gold (CTA/highlights) · purple (labels) · dark grey (screen).
+   A readable dark theme: warm off-white type on dark grey, black type on gold
+   CTAs (--accent bg + --bg text ≈ 8.6:1), purple labels via --label ≈ 7.4:1. */
+[data-skin="regal"] {
+  --bg:         #1c1c20;
+  --bg2:        #24242a;
+  --bg3:        #2e2e35;
+  --border:     #3a3a42;
+  --border2:    #4b4b55;
+  --text:       #f3efe4;
+  --text2:      #cbc4b3;
+  --muted:      #9c968a;
+  --accent:     #e3b23c;
+  --accent2:    #f0c65a;
+  --warn:       #e0a92e;
+  --error:      #ff5c5c;
+  --confirmed:  #5ec27f;
+  --scheduled:  #9a86e0;
+  --tag-a:      #c49ae6;
+  --tag-b:      #e3b23c;
+  --tag-shared: #cbb27a;
+  --radius:     6px;
+  --font-head:  'Syne', sans-serif;
+  --font-body:  'DM Mono', monospace;
+  --font-size:  13px;
+  --shadow:     0 2px 12px rgba(0,0,0,.45);
+  --pill-ok-bg:   #16301f; --pill-ok-fg:   #6cc78a;
+  --pill-warn-bg: #2e2408; --pill-warn-fg: #e8b84a;
+  --pill-err-bg:  #2c1010; --pill-err-fg:  #ff6b6b;
+  --stag-a-bg:  rgba(196,154,230,.14); --stag-b-bg: rgba(227,178,60,.14); --stag-s-bg: rgba(203,178,122,.12);
+  --vtag-pref-bg:  rgba(94,194,127,.12);  --vtag-pref-fg:  #6cc78a; --vtag-pref-bd: rgba(94,194,127,.25);
+  --vtag-avoid-bg: rgba(255,92,92,.1);    --vtag-avoid-fg: #ff6b6b; --vtag-avoid-bd: rgba(255,92,92,.22);
+  --cert-bg: rgba(196,154,230,.14); --cert-fg: #c49ae6; --cert-bd: rgba(196,154,230,.25);
+  --chip-bg:  rgba(227,178,60,.14); --chip-fg: #e3b23c;
+  --sidebar-bg: #17171b;
+  --sidebar-w:  230px;
+  --dot-confirmed: #5ec27f;
+  --dot-scheduled: #9a86e0;
+  --hero-bg: #24242a;
+  --hero-border: #3a3a42;
+  /* Regal: purple labels (gold=CTA, purple=labels, light type on dark grey) */
+  --label: #c49ae6;
+  /* HI [27] CSS-004/005: status, badge, radius, bye tokens */
+  --danger: var(--error);
+  --ok: var(--confirmed);
+  --info: var(--scheduled);
+  --warn-bg: var(--pill-warn-bg);
+  --warn-fg: var(--pill-warn-fg);
+  --home-badge-bg: var(--pill-warn-bg);
+  --home-badge-fg: var(--pill-warn-fg);
+  --radius-lg: calc(var(--radius) + 4px);
+  --bye-bg: var(--bg3);
+  --bye-fg: var(--muted);
+  --bye-border: var(--border2);
+  /* RLK [round-lock]: completed/locked status colour */
+  --completed: var(--tag-b);
+}
+
 [data-skin="forest"] {
   --bg:         #f0ede6;
   --bg2:        #e8e3d8;
@@ -1118,7 +1176,7 @@ body {
 /* Section label */
 .section-label {
   font-family: var(--font-body); font-size: 10px; font-weight: 700;
-  letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+  letter-spacing: .12em; text-transform: uppercase; color: var(--label, var(--muted));
   margin-bottom: 12px; padding-bottom: 7px; border-bottom: 1px solid var(--border);
 }
 
@@ -1164,6 +1222,7 @@ body {
 .skin-btn[data-skin="forest-shadows"] { background: linear-gradient(135deg,#0d1a0d 50%,#4cd87a 50%); }
 .skin-btn[data-skin="saturn"]              { background: linear-gradient(135deg,#0c0804 50%,#f0b020 50%); }
 .skin-btn[data-skin="andres-de-poitrein"] { background: linear-gradient(135deg,#202028 50%,#a88bc8 50%); }
+.skin-btn[data-skin="regal"]               { background: linear-gradient(135deg,#1c1c20 50%,#e3b23c 50%); }
 
 /* ═══════════════════════════════════════════════════════════════
    DASHBOARD
@@ -1257,7 +1316,7 @@ body {
 }
 .glance-label {
   font-size: 10px; font-weight: 700; letter-spacing: .12em;
-  text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
+  text-transform: uppercase; color: var(--label, var(--muted)); margin-bottom: 12px;
   display: flex; justify-content: space-between; align-items: center;
 }
 .glance-label span { font-weight: 400; letter-spacing: 0; text-transform: none; }
@@ -1478,7 +1537,7 @@ table.matrix tr.tr-bye:hover td { background: var(--bg2); }
   transition: color .15s, border-color .15s;
 }
 .breadcrumb-back:hover { color: var(--text); border-color: var(--text); }
-.breadcrumb-label { font-size: 11px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+.breadcrumb-label { font-size: 11px; color: var(--label, var(--muted)); letter-spacing: .08em; text-transform: uppercase; }
 
 .detail-title {
   font-family: var(--font-head); font-size: 24px; font-weight: 800;
@@ -1539,7 +1598,7 @@ table.matrix tr.tr-bye:hover td { background: var(--bg2); }
 
 .detail-panel-label {
   font-size: 10px; font-weight: 700; letter-spacing: .12em;
-  text-transform: uppercase; color: var(--muted);
+  text-transform: uppercase; color: var(--label, var(--muted));
   margin-bottom: 12px;
 }
 
@@ -1730,7 +1789,7 @@ table.constraint-table tbody tr:hover td { background: var(--bg2); }
   font-size: 12px; color: var(--text2);
 }
 .settings-row:last-child { margin-bottom: 0; }
-.settings-label { color: var(--muted); font-size: 11px; min-width: 120px; }
+.settings-label { color: var(--label, var(--muted)); font-size: 11px; min-width: 120px; }
 .settings-select,
 .settings-input {
   background: var(--bg2); border: 1px solid var(--border2);
@@ -1752,7 +1811,7 @@ table.constraint-table tbody tr:hover td { background: var(--bg2); }
   background: var(--bg3); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 14px 16px;
 }
-.stat-card .label { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+.stat-card .label { font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--label, var(--muted)); margin-bottom: 5px; }
 .stat-card .value { font-family: var(--font-head); font-size: 26px; font-weight: 800; color: var(--accent); line-height: 1; }
 .stat-card .sub   { font-size: 10px; color: var(--muted); margin-top: 3px; }
 
@@ -1764,7 +1823,7 @@ table.constraint-table tbody tr:hover td { background: var(--bg2); }
    ═══════════════════════════════════════════════════════════════ */
 .edit-form { display: flex; flex-direction: column; gap: 14px; max-width: 480px; margin: 16px 0; }
 .edit-form-row { display: flex; align-items: center; gap: 12px; }
-.edit-form-label { font-size: 12px; color: var(--muted); min-width: 90px; flex-shrink: 0; }
+.edit-form-label { font-size: 12px; color: var(--label, var(--muted)); min-width: 90px; flex-shrink: 0; }
 .edit-form select,
 .edit-form input[type="time"] {
   background: var(--bg2); border: 1px solid var(--border2);
