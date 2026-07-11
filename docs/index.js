@@ -1,4 +1,4 @@
-window.__APP_VERSION = "0.31.64";
+window.__APP_VERSION = "0.31.65";
 'use strict';
 
 // ── Module imports (CLM-004/005/006: single source of truth) ──────────────
@@ -2236,7 +2236,7 @@ function setSkin(name) {
   localStorage.setItem('roster-skin', name); // explicit user choice → persist
 }
 
-const VALID_SKINS = ['dark', 'forest', 'sunset', 'nautical', 'cobalt', 'night-vision', 'native', 'chrome', 'sports', 'parallax', 'forest-shadows', 'saturn', 'andres-de-poitrein', 'gundam', 'regal'];
+const VALID_SKINS = ['dark', 'forest', 'sunset', 'nautical', 'cobalt', 'night-vision', 'native', 'chrome', 'sports', 'parallax', 'forest-shadows', 'saturn', 'andres-de-poitrein', 'gundam', 'regal', 'gundam-rx78'];
 
 function restoreSkin() {
   const saved = localStorage.getItem('roster-skin');

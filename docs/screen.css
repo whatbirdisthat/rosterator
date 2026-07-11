@@ -113,6 +113,65 @@
   --completed: var(--tag-b);
 }
 
+/* Gundam RX-78-2 — the classic tricolour: white armour · navy blue · red, with a
+   yellow accent. A LIGHT theme (white is core to the scheme): near-black type on a
+   white screen, navy labels (--label ≈ 9.5:1), red CTA/highlights (white-on-red
+   ≈ 5.4:1). Distinct from the dark-green "gundam" (Cockpit) skin. */
+[data-skin="gundam-rx78"] {
+  --bg:         #f4f5f7;
+  --bg2:        #e8ebf0;
+  --bg3:        #dce1e9;
+  --border:     #c4cad6;
+  --border2:    #a8b0c0;
+  --text:       #14161c;
+  --text2:      #3a4150;
+  --muted:      #5a6270;
+  --accent:     #c8102e;
+  --accent2:    #a60d26;
+  --warn:       #9a6b00;
+  --error:      #c8102e;
+  --confirmed:  #1f7a38;
+  --scheduled:  #1e5fd0;
+  --tag-a:      #2b4c9b;
+  --tag-b:      #c8102e;
+  --tag-shared: #9a6b00;
+  --radius:     6px;
+  --font-head:  'Syne', sans-serif;
+  --font-body:  'DM Mono', monospace;
+  --font-size:  13px;
+  --shadow:     0 2px 10px rgba(30,40,80,.14);
+  --pill-ok-bg:   #d8ecdc; --pill-ok-fg:   #1f6b32;
+  --pill-warn-bg: #fdeecb; --pill-warn-fg: #8a6000;
+  --pill-err-bg:  #fadadd; --pill-err-fg:  #b0101f;
+  --stag-a-bg:  #d8e0f4; --stag-b-bg: #f8dadd; --stag-s-bg: #fdf1cf;
+  --vtag-pref-bg:  #d8ecdc; --vtag-pref-fg:  #1f6b32; --vtag-pref-bd: #aecdb4;
+  --vtag-avoid-bg: #fadadd; --vtag-avoid-fg: #b0101f; --vtag-avoid-bd: #e6b0b6;
+  --cert-bg: #d8e0f4; --cert-fg: #1e3a8a; --cert-bd: #b0bce0;
+  --chip-bg:  #f8dadd; --chip-fg: #c8102e;
+  --sidebar-bg: #e8ebf0;
+  --sidebar-w:  230px;
+  --dot-confirmed: #1f7a38;
+  --dot-scheduled: #1e5fd0;
+  --hero-bg: #eaedf2;
+  --hero-border: #c4cad6;
+  /* Gundam RX-78-2: navy blue labels (white screen · red CTA · near-black type) */
+  --label: #1e3a8a;
+  /* HI [27] CSS-004/005: status, badge, radius, bye tokens */
+  --danger: var(--error);
+  --ok: var(--confirmed);
+  --info: var(--scheduled);
+  --warn-bg: var(--pill-warn-bg);
+  --warn-fg: var(--pill-warn-fg);
+  --home-badge-bg: var(--pill-warn-bg);
+  --home-badge-fg: var(--pill-warn-fg);
+  --radius-lg: calc(var(--radius) + 4px);
+  --bye-bg: var(--bg3);
+  --bye-fg: var(--muted);
+  --bye-border: var(--border2);
+  /* RLK [round-lock]: completed/locked status colour */
+  --completed: var(--tag-b);
+}
+
 [data-skin="forest"] {
   --bg:         #f0ede6;
   --bg2:        #e8e3d8;
@@ -1223,6 +1282,7 @@ body {
 .skin-btn[data-skin="saturn"]              { background: linear-gradient(135deg,#0c0804 50%,#f0b020 50%); }
 .skin-btn[data-skin="andres-de-poitrein"] { background: linear-gradient(135deg,#202028 50%,#a88bc8 50%); }
 .skin-btn[data-skin="regal"]               { background: linear-gradient(135deg,#1c1c20 50%,#e3b23c 50%); }
+.skin-btn[data-skin="gundam-rx78"]         { background: linear-gradient(135deg,#1e3a8a 33%,#f4f5f7 33% 66%,#c8102e 66%); }
 
 /* ═══════════════════════════════════════════════════════════════
    DASHBOARD
