@@ -1,4 +1,4 @@
-window.__APP_VERSION = "0.31.70";
+window.__APP_VERSION = "0.31.74";
 'use strict';
 
 // ── Module imports (CLM-004/005/006: single source of truth) ──────────────
@@ -2859,13 +2859,21 @@ function renderDataSubpanelContent(type) {
   const cols = schema.columns;
   const pk = schema.pk;
 
+  // Count pk values so rows sharing a pk (e.g. two volunteers on one jumper) fall
+  // back to index-based refs and stay individually addressable.
+  const pkCounts = {};
+  for (const rec of records) {
+    const v = rec == null ? '' : String(rec[pk] ?? '');
+    if (v !== '') pkCounts[v] = (pkCounts[v] || 0) + 1;
+  }
+
   const rows = records.map((rec, index) => {
     const cells = cols.map(col =>
       `<td>${escHtml(String(rec[col] ?? ''))}</td>`
     ).join('');
     // DJE: stable row identity — falls back to the row index when the pk is
-    // absent (jobs have no job_id) so every Edit opens its OWN row.
-    const id = encodeRowRef(rec, schema, index);
+    // absent (jobs have no job_id) or duplicated, so every Edit/Delete hits its OWN row.
+    const id = encodeRowRef(rec, schema, index, pkCounts[String(rec[pk] ?? '')] > 1);
     return `<tr>
       ${cells}
       <td class="data-row-actions">
@@ -3142,6 +3150,17 @@ async function submitDataForm(type, isEdit, idEncoded, dlg, schema) {
   });
   if (!valid) return;
 
+  // Reject a duplicate jumper on ADD for players/volunteers — a second row on the
+  // same jumper is what corrupts the roster (canonical roster keys on jumper).
+  if (!isEdit && (type === 'players' || type === 'volunteers')) {
+    const jumper = String(body.jumper || '').trim();
+    if (jumper && (_dataRecords[type] || []).some(r => String(r.jumper) === jumper)) {
+      const errSpan = form.querySelector('#dfe-jumper');
+      if (errSpan) { errSpan.textContent = `Jumper ${jumper} already exists`; errSpan.classList.remove('hidden'); }
+      return;
+    }
+  }
+
   // Persist the record to the in-memory cache and the store
   const pk = schema.pk;
 
@@ -3239,7 +3258,15 @@ async function executeDataDelete(type, idEncoded, rowEl, confirmBtn) {
   if (record) {
     _dataRecords[type] = (_dataRecords[type] || []).filter(r => r !== record);
   }
-  if (type !== 'volunteers') {
+  // Persist the deletion — same routing as submitDataForm: rounds live in
+  // round_summary.rounds; every other type (INCLUDING volunteers) in reference_data.
+  // (The old `if (type !== 'volunteers')` guard made volunteer deletes a silent no-op:
+  // the cache was pruned but the store kept the row, so refresh restored it.)
+  if (type === 'rounds') {
+    const currentData = getData();
+    const roundSummary = { ...(currentData?.round_summary || {}), rounds: _dataRecords['rounds'] };
+    dispatch({ type: 'apply-server-fragments', payload: { fragments: { round_summary: roundSummary } } });
+  } else {
     dispatch({ type: 'update-reference-data', payload: { key: type, records: _dataRecords[type] } });
   }
   await refreshDataSubpanel(type);

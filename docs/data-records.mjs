@@ -38,11 +38,12 @@ export function firstHomeGroundName(locations, clubId) {
 // ── DJE: robust row identity for the data dialog ───────────────────────────────
 
 // A stable per-row reference. Prefers the schema primary key; falls back to the
-// row index when the pk is absent or empty (jobs have no job_id → every row would
-// otherwise collide on '').
-export function encodeRowRef(record, schema, index) {
+// row index when the pk is absent/empty (jobs have no job_id) OR when the pk value is
+// DUPLICATED in the list (two volunteers on one jumper would otherwise both resolve
+// to the first row) — so every Edit/Delete acts on its OWN row.
+export function encodeRowRef(record, schema, index, pkIsDuplicated = false) {
   const pkVal = record == null ? undefined : record[schema.pk];
-  if (pkVal != null && String(pkVal) !== '') {
+  if (!pkIsDuplicated && pkVal != null && String(pkVal) !== '') {
     return 'pk:' + encodeURIComponent(String(pkVal));
   }
   return 'ix:' + index;
