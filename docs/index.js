@@ -1,4 +1,4 @@
-window.__APP_VERSION = "0.31.74";
+window.__APP_VERSION = "0.31.76";
 'use strict';
 
 // ── Module imports (CLM-004/005/006: single source of truth) ──────────────
@@ -2776,9 +2776,10 @@ const DATA_SCHEMAS = {
     // DVE: jobs have no job_id, and the allocator reads preferred_job (singular)
     // and avoid_jobs (plural) as semicolon-delimited job NAMES — so the pickers
     // key on job_name and persist to those exact fields.
-    columns: ['jumper','volunteer_name','preferred_job','avoid_jobs'],
+    columns: ['jumper','volunteer_name','eligible','preferred_job','avoid_jobs'],
     fields: [
       { name: 'jumper',        label: 'Jumper #', type: 'text',          required: true  },
+      { name: 'eligible',      label: 'Eligible for jobs', type: 'checkbox', required: false, default: true },
       { name: 'preferred_job', label: 'Prefers', type: 'tag-picker-ref',
         refType: 'jobs', refPk: 'job_name', refLabel: 'job_name',        required: false },
       { name: 'avoid_jobs',    label: 'Avoids',   type: 'tag-picker-ref',
@@ -2868,9 +2869,14 @@ function renderDataSubpanelContent(type) {
   }
 
   const rows = records.map((rec, index) => {
-    const cells = cols.map(col =>
-      `<td>${escHtml(String(rec[col] ?? ''))}</td>`
-    ).join('');
+    const cells = cols.map(col => {
+      // Render the eligible flag as a friendly Yes/No (stored as 'y'/'n'/'Y').
+      if (col === 'eligible') {
+        const yes = String(rec[col] ?? '').trim().toLowerCase() === 'y';
+        return `<td>${yes ? 'Yes' : 'No'}</td>`;
+      }
+      return `<td>${escHtml(String(rec[col] ?? ''))}</td>`;
+    }).join('');
     // DJE: stable row identity — falls back to the row index when the pk is
     // absent (jobs have no job_id) or duplicated, so every Edit/Delete hits its OWN row.
     const id = encodeRowRef(rec, schema, index, pkCounts[String(rec[pk] ?? '')] > 1);
@@ -3067,6 +3073,18 @@ async function openDataDialog(type, idEncoded = null) {
         <input type="hidden" name="${f.name}" id="tp-hidden-${f.name}" value="${escHtml(JSON.stringify(existingIds))}">
       </div>`;
     }
+    if (f.type === 'checkbox') {
+      // Checked when editing a row whose value normalises to 'y'; on Add, default from f.default.
+      const checked = existing
+        ? String(existing[f.name] ?? '').trim().toLowerCase() === 'y'
+        : f.default === true;
+      return `<div class="data-field data-field-checkbox">
+        <label for="df-${f.name}">
+          <input id="df-${f.name}" name="${f.name}" type="checkbox" ${checked ? 'checked' : ''}>
+          ${escHtml(f.label)}
+        </label>
+      </div>`;
+    }
     return `<div class="data-field">
       <label for="df-${f.name}">${escHtml(f.label)}${f.required ? ' *' : ''}</label>
       <input id="df-${f.name}" name="${f.name}" type="${f.type}" value="${escHtml(val)}" ${req}
@@ -3126,7 +3144,9 @@ async function submitDataForm(type, isEdit, idEncoded, dlg, schema) {
   schema.fields.forEach(f => {
     const el = form.querySelector(`[name="${f.name}"]`);
     if (!el) return;
-    if (f.type === 'tag-picker-ref') {
+    if (f.type === 'checkbox') {
+      body[f.name] = el.checked ? 'y' : 'n';
+    } else if (f.type === 'tag-picker-ref') {
       // DVE: store the canonical semicolon-joined job NAMES the allocator reads
       // (never JSON / comma garbage).
       let picked = [];
